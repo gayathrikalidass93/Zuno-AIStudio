@@ -162,8 +162,6 @@ export default function App() {
             helper={activeHelper}
             bookings={state.bookings}
             customers={state.customers}
-            helpers={state.helpers}
-            onSwitchHelper={(helperId) => db.setActiveHelperId(helperId)}
             onUpdateAvailability={(status) => db.updateHelperAvailability(activeHelper.id, status)}
             onVerifyOtp={(bkId, otp) => db.verifyStartOtp(bkId, otp, activeHelper.id)}
             onUpdateBookingStatus={(bkId, status) =>
@@ -173,6 +171,7 @@ export default function App() {
             onRateCustomer={(bkId, rating, feedback) =>
               db.submitHelperRatingForCustomer(bkId, rating, feedback)
             }
+            onPriceResponse={(bkId, action, counterPrice) => db.respondToPriceOffer(bkId, activeHelper.id, action, counterPrice)}
             onOpenAuth={handleLogout}
           />
         )}
