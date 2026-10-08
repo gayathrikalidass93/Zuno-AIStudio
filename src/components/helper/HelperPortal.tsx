@@ -74,7 +74,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState<string>(
     'Sudden family health emergency'
-        </div>
+  );
   const [cancellationSubmittedNotice, setCancellationSubmittedNotice] = useState<string | null>(null);
 
   // Rate customer modal state
