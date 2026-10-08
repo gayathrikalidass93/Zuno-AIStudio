@@ -26,8 +26,8 @@ import { matchHelpers } from './matching';
 
 // Fresh clean datastore: old demo/localStorage records are intentionally orphaned.
 // Identity must never be reconstructed from legacy persisted helper records.
-const STORAGE_KEY = 'zuno_marketplace_data_v4_clean';
-const SESSION_STORAGE_KEY = 'zuno_active_session_v4_clean';
+const STORAGE_KEY = 'zuno_marketplace_data_v5_fresh';
+const SESSION_STORAGE_KEY = 'zuno_active_session_v5_fresh';
 
 let currentSession: AuthSession | null = null;
 try {
@@ -158,10 +158,10 @@ function loadState(): MarketplaceState {
     helpers: INITIAL_HELPERS,
     customers: INITIAL_CUSTOMERS,
     apartments: INITIAL_APARTMENTS,
-    bookings: INITIAL_BOOKINGS,
+    bookings: [],
     pricingConfig: INITIAL_PRICING_CONFIG,
-    supportTickets: INITIAL_SUPPORT_TICKETS,
-    auditLogs: INITIAL_AUDIT_LOGS,
+    supportTickets: [],
+    auditLogs: [],
     supplyDemand: INITIAL_LOCALITY_SUPPLY_DEMAND,
     privacyConsents: INITIAL_PRIVACY_CONSENTS,
     privacyRequests: INITIAL_PRIVACY_REQUESTS,
@@ -202,10 +202,10 @@ export const db = {
       helpers: JSON.parse(JSON.stringify(INITIAL_HELPERS)),
       customers: JSON.parse(JSON.stringify(INITIAL_CUSTOMERS)),
       apartments: JSON.parse(JSON.stringify(INITIAL_APARTMENTS)),
-      bookings: JSON.parse(JSON.stringify(INITIAL_BOOKINGS)),
+      bookings: [],
       pricingConfig: JSON.parse(JSON.stringify(INITIAL_PRICING_CONFIG)),
-      supportTickets: JSON.parse(JSON.stringify(INITIAL_SUPPORT_TICKETS)),
-      auditLogs: JSON.parse(JSON.stringify(INITIAL_AUDIT_LOGS)),
+      supportTickets: [],
+      auditLogs: [],
       supplyDemand: JSON.parse(JSON.stringify(INITIAL_LOCALITY_SUPPLY_DEMAND)),
       privacyConsents: [],
       privacyRequests: [],
