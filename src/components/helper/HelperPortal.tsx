@@ -82,6 +82,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [customerRating, setCustomerRating] = useState<number>(5);
   const [counterPrice, setCounterPrice] = useState<string>('');
   const [priceNotice, setPriceNotice] = useState<string | null>(null);
+  const [counterPrice, setCounterPrice] = useState<string>('');
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
   // Selected booking state (for helpers with multiple shifts)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
           <span className="text-stone-500">
             {lang === 'ta' ? 'உதவிக் கூட்டாளி போர்டல்' : 'Helper Portal'}
           </span>
-  );
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Helper profile switcher (For easy testing of multiple helpers) */}
@@ -438,6 +440,28 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
         </div>
       )}
 
+      {primaryBooking?.priceNegotiationStatus && (
+        <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="font-bold text-stone-900">Price negotiation</div>
+            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-900">{primaryBooking.priceNegotiationStatus}</span>
+          </div>
+          <div className="text-xs text-stone-600">Customer offer: <b>₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</b></div>
+          {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
+            <>
+              <input type="number" min="1" value={counterPrice} onChange={(e) => setCounterPrice(e.target.value)} placeholder="Counter price ₹" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs" />
+              <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'accept'); setPriceNotice('Offer accepted.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
+                <button type="button" onClick={() => { const n = Number(counterPrice); if (n > 0) { onPriceResponse(primaryBooking.id, 'counter', n); setPriceNotice('Counter offer sent.'); } }} className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">Counter</button>
+                <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'decline'); setPriceNotice('Offer declined.'); }} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Decline</button>
+              </div>
+            </>
+          )}
+          {primaryBooking.priceNegotiationStatus === 'countered' && <div className="text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for customer.</div>}
+          {priceNotice && <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">{priceNotice}</div>}
+        </div>
+      )}
+
       {/* Exact Target Arrival Time Clock */}
               <div className="p-3.5 rounded-2xl bg-white border border-amber-200 flex items-center justify-between">
                 <div>
@@ -588,29 +612,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                 </div>
               </div>
 
-              {primaryBooking && primaryBooking.priceNegotiationStatus && (
-            <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="font-bold text-stone-900">Price negotiation</div>
-                <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-900">{primaryBooking.priceNegotiationStatus}</span>
-              </div>
-              <div className="text-xs text-stone-600">Customer offer: <b>₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</b></div>
-              {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
-                <>
-                  <input type="number" min="1" value={counterPrice} onChange={(e) => setCounterPrice(e.target.value)} placeholder="Counter price ₹" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs" />
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'accept'); setPriceNotice('Offer accepted.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
-                    <button type="button" onClick={() => { const n = Number(counterPrice); if (n > 0) { onPriceResponse(primaryBooking.id, 'counter', n); setPriceNotice('Counter offer sent.'); } }} className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">Counter</button>
-                    <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'decline'); setPriceNotice('Offer declined.'); }} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Decline</button>
-                  </div>
-                </>
-              )}
-              {primaryBooking.priceNegotiationStatus === 'countered' && <div className="text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for customer.</div>}
-              {priceNotice && <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">{priceNotice}</div>}
-            </div>
-          )}
-
-          {/* CRITICAL REQUIREMENT: NO LAST MINUTE SURPRISES PROTOCOL */}
+              {/* CRITICAL REQUIREMENT: NO LAST MINUTE SURPRISES PROTOCOL */}
               <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -638,8 +640,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                 </button>
               </div>
             </div>
-
           )}
+
           {/* CRITICAL REQUIREMENT: HOW OTP IS VISIBLE & ENTERED BY HELPERS */}
           {primaryBooking && (
             <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
