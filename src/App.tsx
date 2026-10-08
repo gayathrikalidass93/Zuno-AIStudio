@@ -141,9 +141,16 @@ export default function App() {
     setSession(null);
   };
 
-  // If a helper session points to a missing helper record, do not silently show Lakshmi/another helper.
-  if (session?.role === 'helper' && !sessionHelper) {
-    db.logout();
+  // If a helper session points to a missing helper record, do not silently show
+  // Lakshmi/another helper. Clearing the session is a side effect, so it runs in
+  // an effect — mutating the store during render re-enters React while it is
+  // already rendering.
+  const hasUnresolvableHelperSession = session?.role === 'helper' && !sessionHelper;
+  useEffect(() => {
+    if (hasUnresolvableHelperSession) db.logout();
+  }, [hasUnresolvableHelperSession]);
+
+  if (hasUnresolvableHelperSession) {
     return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
   }
 

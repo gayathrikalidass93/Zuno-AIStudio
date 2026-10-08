@@ -45,6 +45,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [counter, setCounter] = useState(0);
   const [agreedPrice, setAgreedPrice] = useState(0);
   const [notes, setNotes] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,6 +61,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setCounter(0);
     setAgreedPrice(0);
     setNotes('');
+    setSubmitError(null);
   }, [isOpen, customer, preselectedCategory, initialHelperId]);
 
   const suggestedPrice = useMemo(() => {
@@ -88,54 +90,67 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       ? `${bathrooms} bathroom(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'} Cleaning`
       : services.find(s => s.id === category)?.name || category;
 
-  const buildBooking = () => {
-    if (!selectedHelper) return;
-    if (workDate < getMinWorkDate()) { setStep(2); return; }
-    const finalPrice = agreedPrice || counter || Number(offer) || suggestedPrice;
-    const taskId = category === 'cleaning' ? 'clean_sweep'
+  // A single builder keeps the review step and the final send step in sync.
+  const bookingPayload = (finalPrice: number) => ({
+    customerId: customer.id,
+    helperId: selectedHelper!.id,
+    bookingMode: 'choose_helper',
+    bookingType: 'casual',
+    status: 'requested',
+    category,
+    tasks: [category === 'cleaning' ? 'clean_sweep'
       : category === 'bathroom_cleaning' ? 'bath_clean'
       : category === 'cooking' ? 'cook_home'
       : category === 'laundry' ? 'laundry_home'
-      : category === 'organisation' ? 'organise_home' : 'family_help';
-
-    onConfirmBooking({
-      customerId: customer.id,
-      helperId: selectedHelper.id,
-      bookingMode: 'choose_helper',
-      bookingType: 'casual',
-      status: 'requested',
-      category,
-      tasks: [taskId],
-      scheduledDate: workDate,
-      scheduledSlot: 'Work-specific booking',
+      : category === 'organisation' ? 'organise_home' : 'family_help'],
+    scheduledDate: workDate,
+    scheduledSlot: 'Work-specific booking',
+    durationHours: 1,
+    estimatedWorkloadMinutes: 0,
+    isUrgent: false,
+    locality,
+    apartmentName,
+    block,
+    flat,
+    customerNotes: notes,
+    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+    customerOfferPrice: finalPrice,
+    negotiatedAgreedPrice: finalPrice,
+    priceNegotiationStatus: 'pending_helper',
+    paymentStatus: 'pay_after_arrival_or_completion',
+    pricing: {
+      baseHourlyRate: selectedHelper!.hourlyRate,
       durationHours: 1,
-      estimatedWorkloadMinutes: 0,
-      isUrgent: false,
-      locality,
-      apartmentName,
-      block,
-      flat,
-      customerNotes: notes,
-      workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
-      customerOfferPrice: finalPrice,
-      negotiatedAgreedPrice: finalPrice,
-      priceNegotiationStatus: 'pending_helper',
-      paymentStatus: 'pay_after_arrival_or_completion',
-      pricing: {
-        baseHourlyRate: selectedHelper.hourlyRate,
-        durationHours: 1,
-        baseAmount: finalPrice,
-        taskComplexityAdjustment: 0,
-        urgentFee: 0,
-        weekendFee: 0,
-        multiTaskDiscount: 0,
-        subtotal: finalPrice,
-        zunoFee: 0,
-        helperPayout: finalPrice,
-        totalAmount: finalPrice,
-      },
-    });
-    onClose();
+      baseAmount: finalPrice,
+      taskComplexityAdjustment: 0,
+      urgentFee: 0,
+      weekendFee: 0,
+      multiTaskDiscount: 0,
+      subtotal: finalPrice,
+      zunoFee: 0,
+      helperPayout: finalPrice,
+      totalAmount: finalPrice,
+    },
+  });
+
+  // Sending an offer must always answer the customer. The store rejects a
+  // booking whose work date has already passed (for example when the modal was
+  // left open past midnight), so re-check the date and surface any failure
+  // instead of leaving the button looking dead.
+  const submitOffer = (finalPrice: number) => {
+    if (!selectedHelper || !(finalPrice > 0)) return;
+    if (workDate < getMinWorkDate()) {
+      setSubmitError('That work date has already passed. Please choose a new date.');
+      setStep(2);
+      return;
+    }
+    try {
+      onConfirmBooking(bookingPayload(finalPrice));
+      setSubmitError(null);
+      onClose();
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Could not send your offer. Please try again.');
+    }
   };
 
   if (!isOpen) return null;
@@ -148,6 +163,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       </div>
 
       <div className="p-5 space-y-5">
+        {submitError && <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">{submitError}</div>}
+
         {step === 1 && <div className="space-y-4">
           <h2 className="font-black text-xl">Where is the work?</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -162,7 +179,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
         {step === 2 && <div className="space-y-4">
           <h2 className="font-black text-xl">Choose work date</h2>
           <p className="text-sm text-stone-500">Helpers are matched by the work requested, not by time slots.</p>
-          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <label className="text-xs font-bold">Date<input type="date" min={getMinWorkDate()} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) { setWorkDate(value); setSubmitError(null); } }} className="mt-1 w-full p-3 rounded-xl border"/></label>
           <button disabled={workDate < getMinWorkDate()} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
@@ -215,46 +232,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 disabled={!selectedHelper || Number(offer) <= 0}
                 onClick={() => {
                   const n = Number(offer);
-                  if (!selectedHelper || n <= 0) return;
+                  if (n <= 0) return;
                   setAgreedPrice(n);
-                  onConfirmBooking({
-                    customerId: customer.id,
-                    helperId: selectedHelper.id,
-                    bookingMode: 'choose_helper',
-                    bookingType: 'casual',
-                    status: 'requested',
-                    category,
-                    tasks: [category === 'cleaning' ? 'clean_sweep' : category === 'bathroom_cleaning' ? 'bath_clean' : category === 'cooking' ? 'cook_home' : category === 'laundry' ? 'laundry_home' : category === 'organisation' ? 'organise_home' : 'family_help'],
-                    scheduledDate: workDate,
-                    scheduledSlot: 'Work-specific booking',
-                    durationHours: 1,
-                    estimatedWorkloadMinutes: 0,
-                    isUrgent: false,
-                    locality,
-                    apartmentName,
-                    block,
-                    flat,
-                    customerNotes: notes,
-                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
-                    customerOfferPrice: n,
-                    negotiatedAgreedPrice: n,
-                    priceNegotiationStatus: 'pending_helper',
-                    paymentStatus: 'pay_after_arrival_or_completion',
-                    pricing: {
-                      baseHourlyRate: selectedHelper.hourlyRate,
-                      durationHours: 1,
-                      baseAmount: n,
-                      taskComplexityAdjustment: 0,
-                      urgentFee: 0,
-                      weekendFee: 0,
-                      multiTaskDiscount: 0,
-                      subtotal: n,
-                      zunoFee: 0,
-                      helperPayout: n,
-                      totalAmount: n,
-                    },
-                  });
-                  onClose();
+                  submitOffer(n);
                 }}
                 className="px-4 rounded-xl bg-stone-900 text-white font-bold disabled:opacity-40"
               >
@@ -270,7 +250,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
         {step === 7 && <div className="space-y-5">
           <div className="text-center"><div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><Check className="w-7 h-7"/></div><h2 className="font-black text-xl mt-3">Ready to confirm</h2></div>
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm"><b>₹{agreedPrice} offer sent to {selectedHelper?.name}.</b><br/>We'll check with the helper and update you. Payment is not taken now; Razorpay payment will be collected after the helper reaches your home or after the work is completed.</div>
-          <button onClick={buildBooking} className="w-full p-4 rounded-2xl bg-orange-600 text-white font-black">Send offer · Pay later</button>
+          <button onClick={() => submitOffer(agreedPrice || Number(offer) || suggestedPrice)} className="w-full p-4 rounded-2xl bg-orange-600 text-white font-black">Send offer · Pay later</button>
           <button onClick={()=>setStep(6)} className="w-full p-3 rounded-xl border font-bold">Back</button>
         </div>}
       </div>
