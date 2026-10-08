@@ -104,7 +104,37 @@ function loadState(): MarketplaceState {
         const parsed = JSON.parse(raw);
         if (parsed.helpers && parsed.bookings) {
           // Ensure all helpers have hourlyRate and categoryRates
-          parsed.helpers = parsed.helpers.map((h: any) => {
+          // Normalize persisted helper identities before any authentication lookup.
+          // Older demo/localStorage data can contain duplicate IDs or stale names/phones.
+          // The seed ID is the authoritative identity key; never let stale persisted data
+          // turn Deepa's ID into Lakshmi's profile.
+          const helperById = new Map<string, any>();
+          parsed.helpers.forEach((h: any) => {
+            if (h?.id && !helperById.has(h.id)) {
+              helperById.set(h.id, h);
+            }
+          });
+
+          INITIAL_HELPERS.forEach((init) => {
+            const existing = helperById.get(init.id);
+            helperById.set(init.id, {
+              ...(existing || {}),
+              ...init,
+              ...(existing
+                ? {
+                    // Preserve mutable operational fields, while identity remains canonical.
+                    availabilityStatus: existing.availabilityStatus ?? init.availabilityStatus,
+                    isActive: existing.isActive ?? init.isActive,
+                    verificationStatus: existing.verificationStatus ?? init.verificationStatus,
+                    hourlyRate: existing.hourlyRate ?? init.hourlyRate,
+                    hourlyPayout: existing.hourlyPayout ?? init.hourlyPayout,
+                    categoryRates: existing.categoryRates ?? init.categoryRates,
+                  }
+                : {}),
+            });
+          });
+
+          parsed.helpers = Array.from(helperById.values()).map((h: any) => {
             const init = INITIAL_HELPERS.find((ih) => ih.id === h.id);
             return {
               ...h,
