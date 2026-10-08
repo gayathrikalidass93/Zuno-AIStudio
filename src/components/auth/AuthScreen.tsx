@@ -137,12 +137,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    // Selecting a helper passes their ID (e.g. "hlp_priya"), which has no digits.
+    // Match the exact ID first, and only run phone matching when the input actually
+    // contains digits — an empty digit string would otherwise match the first helper.
     const cleanDigits = input.replace(/\D/g, '');
-    const found = state.helpers.find((h) => {
-      if (h.id === input) return true;
-      const hDigits = h.phone.replace(/\D/g, '');
-      return hDigits.endsWith(cleanDigits) || cleanDigits.endsWith(hDigits);
-    });
+    const found =
+      state.helpers.find((h) => h.id === input) ||
+      (cleanDigits
+        ? state.helpers.find((h) => {
+            const hDigits = h.phone.replace(/\D/g, '');
+            return hDigits.endsWith(cleanDigits) || cleanDigits.endsWith(hDigits);
+          })
+        : undefined);
 
     if (found) {
       db.setSession({
