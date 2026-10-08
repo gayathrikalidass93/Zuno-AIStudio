@@ -31,7 +31,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [apartmentName, setApartmentName] = useState(customer.apartmentName || '');
   const [block, setBlock] = useState(customer.block || '');
   const [flat, setFlat] = useState(customer.flat || '');
-  const getMinWorkDate = () => { const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) today.setDate(today.getDate() + 1); return today.toISOString().slice(0,10); };\n  const [workDate, setWorkDate] = useState(getMinWorkDate());
+  const getLocalDateString = (date: Date) => { const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };\n  const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };\n  const [workDate, setWorkDate] = useState(getMinWorkDate());
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
   const [bedrooms, setBedrooms] = useState(2);
   const [halls, setHalls] = useState(1);
