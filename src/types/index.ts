@@ -125,6 +125,9 @@ export type BookingStatus =
   | 'cancelled'
   | 'replacement_required';
 
+export type PriceNegotiationStatus = 'pending_helper' | 'accepted' | 'countered' | 'declined';
+export type PaymentStatus = 'not_due' | 'pay_after_arrival_or_completion' | 'paid';
+
 export interface BookingPricing {
   baseHourlyRate: number; // Selected helper's asking rate per hour
   durationHours: number;
@@ -163,6 +166,18 @@ export interface Booking {
   pricing: BookingPricing;
   workScopeBreakdown?: WorkScopeBreakdown;
   negotiatedAgreedPrice?: number;
+  customerOfferPrice?: number;
+  helperCounterPrice?: number;
+  priceNegotiationStatus?: PriceNegotiationStatus;
+  paymentStatus?: PaymentStatus;
+  workScope?: {
+    description: string;
+    bedrooms?: number;
+    halls?: number;
+    kitchens?: number;
+    bathrooms?: number;
+    cleaningType?: 'casual' | 'regular';
+  };
   timestamps: {
     requestedAt: string;
     confirmedAt?: string;
