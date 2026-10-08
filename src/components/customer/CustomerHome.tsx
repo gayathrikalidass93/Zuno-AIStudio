@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Booking, Customer, Helper } from '../../types';
 import { db } from '../../services/db';
+import { MASTER_TASKS } from '../../data/services';
 
 interface Props {
   customer: Customer;
@@ -101,7 +102,11 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
           return <div key={b.id} onClick={() => onViewBookingDetails(b.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onViewBookingDetails(b.id); }} className="w-full text-left bg-white border border-stone-200 rounded-2xl p-4 mb-2 cursor-pointer">
             <div className="flex justify-between gap-3">
               <div>
-                <div className="font-bold text-sm">{b.category || 'Household assistance'}</div>
+                <div className="font-bold text-sm">
+                  {b.tasks?.length > 1
+                    ? `${b.tasks.length} services: ${b.tasks.map(taskId => MASTER_TASKS.find(t => t.id === taskId)?.name || taskId).join(' + ')}`
+                    : MASTER_TASKS.find(t => t.id === b.tasks?.[0])?.name || b.category || 'Household assistance'}
+                </div>
                 <div className="text-xs text-stone-500 mt-1">{b.scheduledDate || 'Work date'} · {b.locality}</div>
               </div>
               <span className="text-[10px] font-bold uppercase text-orange-700">
