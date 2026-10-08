@@ -515,6 +515,12 @@ export const db = {
     } else if (action === 'counter') {
       if (!counterPrice || counterPrice <= 0) return undefined;
       booking.helperCounterPrice = counterPrice;
+      // A counter is a proposal, not an acceptance. Keep the original
+      // customer offer for history, but display the helper counter as the
+      // current proposed bill until the customer accepts it.
+      booking.pricing.baseAmount = counterPrice;
+      booking.pricing.subtotal = counterPrice;
+      booking.pricing.totalAmount = counterPrice;
       booking.priceNegotiationStatus = 'countered';
       booking.status = 'requested';
     } else {
@@ -549,6 +555,10 @@ export const db = {
       if (!counterPrice || counterPrice <= 0) return undefined;
       booking.customerOfferPrice = counterPrice;
       booking.helperCounterPrice = undefined;
+      booking.pricing.baseAmount = counterPrice;
+      booking.pricing.subtotal = counterPrice;
+      booking.pricing.totalAmount = counterPrice;
+      booking.negotiatedAgreedPrice = undefined;
       booking.priceNegotiationStatus = 'pending_helper';
       booking.status = 'requested';
     } else {
