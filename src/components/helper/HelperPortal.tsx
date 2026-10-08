@@ -47,7 +47,11 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [cancelReason, setCancelReason] = useState('Sudden health emergency / fever');
 
   const helperBookings = useMemo(
-    () => bookings.filter((booking) => booking.helperId === helper.id),
+    () => bookings.filter(
+      (booking) =>
+        booking.helperId === helper.id &&
+        !(booking.priceNegotiationStatus === 'declined' && booking.status === 'requested')
+    ),
     [bookings, helper.id]
   );
 
