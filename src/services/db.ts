@@ -166,7 +166,7 @@ function loadState(): MarketplaceState {
     privacyConsents: INITIAL_PRIVACY_CONSENTS,
     privacyRequests: INITIAL_PRIVACY_REQUESTS,
     activeCustomerId: 'cust_kartik',
-    activeHelperId: 'hlp_lakshmi',
+    activeHelperId: '',
   };
 }
 
@@ -294,13 +294,12 @@ export const db = {
     return cust || state.customers[0];
   },
 
-  getActiveHelper(): Helper {
-    if (currentSession && currentSession.role === 'helper') {
-      const found = state.helpers.find((h) => h.id === currentSession?.userId);
-      if (found) return found;
+  getActiveHelper(): Helper | undefined {
+    if (currentSession?.role === 'helper') {
+      return state.helpers.find((h) => h.id === currentSession.userId);
     }
-    const hlp = state.helpers.find((h) => h.id === state.activeHelperId);
-    return hlp || INITIAL_HELPERS[0];
+    if (!state.activeHelperId) return undefined;
+    return state.helpers.find((h) => h.id === state.activeHelperId);
   },
 
   // Customer Management
