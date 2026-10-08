@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { db } from './services/db';
-import { Booking, ServiceCategory, AuthRole, AuthSession } from './types';
+import { Booking, ServiceCategory, AuthRole, AuthSession, Helper } from './types';
 import { Header } from './components/common/Header';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { CustomerHome } from './components/customer/CustomerHome';
@@ -43,7 +43,14 @@ export default function App() {
   const [supportModalBookingId, setSupportModalBookingId] = useState<string | null>(null);
 
   const activeCustomer = db.getActiveCustomer();
-  const activeHelper = db.getActiveHelper();
+  // Helper identity is derived strictly from the authenticated session userId.
+  // Never fall back to another helper when a helper is logged in.
+  const sessionHelper = session?.role === 'helper'
+    ? state.helpers.find((h) => h.id === session.userId)
+    : undefined;
+  const activeHelper: Helper = session?.role === 'helper'
+    ? (sessionHelper as Helper)
+    : db.getActiveHelper();
 
   // Active booking for the details modal
   const selectedBooking = state.bookings.find((b) => b.id === activeBookingModalId) || null;
@@ -119,6 +126,12 @@ export default function App() {
     db.logout();
     setSession(null);
   };
+
+  // If a helper session points to a missing helper record, do not silently show Lakshmi/another helper.
+  if (session?.role === 'helper' && !sessionHelper) {
+    db.logout();
+    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
+  }
 
   // If no session exists, strictly present the Login / Registration screen
   if (!session) {
