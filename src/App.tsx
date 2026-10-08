@@ -48,9 +48,9 @@ export default function App() {
   const sessionHelper = session?.role === 'helper'
     ? state.helpers.find((h) => h.id === session.userId)
     : undefined;
-  const activeHelper: Helper = session?.role === 'helper'
-    ? (sessionHelper as Helper)
-    : db.getActiveHelper();
+  // There is no default helper identity. A helper exists only when the authenticated
+  // session resolves to that exact helper ID.
+  const activeHelper = sessionHelper;
 
   // Active booking for the details modal
   const selectedBooking = state.bookings.find((b) => b.id === activeBookingModalId) || null;
@@ -184,21 +184,21 @@ export default function App() {
           />
         )}
 
-        {session.role === 'helper' && (
+        {session.role === 'helper' && sessionHelper && (
           <HelperPortal
-            helper={activeHelper}
+            helper={sessionHelper}
             bookings={state.bookings}
             customers={state.customers}
-            onUpdateAvailability={(status) => db.updateHelperAvailability(activeHelper.id, status)}
-            onVerifyOtp={(bkId, otp) => db.verifyStartOtp(bkId, otp, activeHelper.id)}
+            onUpdateAvailability={(status) => db.updateHelperAvailability(sessionHelper.id, status)}
+            onVerifyOtp={(bkId, otp) => db.verifyStartOtp(bkId, otp, sessionHelper.id)}
             onUpdateBookingStatus={(bkId, status) =>
-              db.updateBookingStatus(bkId, status, { actor: 'helper', actorName: activeHelper.name })
+              db.updateBookingStatus(bkId, status, { actor: 'helper', actorName: sessionHelper.name })
             }
-            onCancelWithEmergency={(bkId, reason) => db.cancelByHelper(bkId, activeHelper.id, reason)}
+            onCancelWithEmergency={(bkId, reason) => db.cancelByHelper(bkId, sessionHelper.id, reason)}
             onRateCustomer={(bkId, rating, feedback) =>
               db.submitHelperRatingForCustomer(bkId, rating, feedback)
             }
-            onPriceResponse={(bkId, action, counterPrice) => db.respondToPriceOffer(bkId, activeHelper.id, action, counterPrice)}
+            onPriceResponse={(bkId, action, counterPrice) => db.respondToPriceOffer(bkId, sessionHelper.id, action, counterPrice)}
             onOpenAuth={handleLogout}
           />
         )}
