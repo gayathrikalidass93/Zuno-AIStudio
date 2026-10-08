@@ -1,0 +1,6 @@
+{
+  "name": "ZUNO - Your Extra Pair of Hands",
+  "description": "On-demand household assistance marketplace in Chennai. Book trusted nearby helpers for 1-4 hours to combine multiple cleaning, cooking, laundry, and care tasks into one seamless visit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
