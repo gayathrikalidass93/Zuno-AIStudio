@@ -82,6 +82,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [customerRating, setCustomerRating] = useState<number>(5);
   const [counterPrice, setCounterPrice] = useState<string>('');
   const [priceNotice, setPriceNotice] = useState<string | null>(null);
+  const [counterPrice, setCounterPrice] = useState<string>('');
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
   // Selected booking state (for helpers with multiple shifts)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -403,7 +405,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
               <p className="text-xs text-stone-500 max-w-sm mx-auto">
                 {lang === 'ta'
                   ? 'வாடிக்கையாளர் உங்களை தேர்வு செய்தவுடன், அந்த பணியின் நேரம், முகவரி மற்றும் OTP சரிபார்ப்பு விவரங்கள் இங்கே தோன்றும்.'
-                  : `Once a customer chooses ${helper.name} in ZUNO, the work details, customer location, and arrival verification will appear right here.`}
+                  : `Once a customer chooses ${helper.name} in ZUNO, the arrival deadline, flat location, chore checklist, and OTP station will appear right here.`}
               </p>
             </div>
           )}
@@ -425,16 +427,11 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
             <div><b>Customer offer:</b> ₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</div>
           </div>
           {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
-            <>
-            <div className="flex gap-2 pt-2">
-              <input type="number" min="1" value={counterPrice} onChange={e=>setCounterPrice(e.target.value)} placeholder="Counter ₹" className="flex-1 p-2.5 rounded-xl border border-stone-300 text-xs" />
-            </div>
             <div className="grid grid-cols-3 gap-2 pt-2">
-              <button onClick={() => { onPriceResponse(primaryBooking.id, 'accept'); setPriceNotice('Offer accepted. Customer can now proceed.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
-              <button onClick={() => { const n=Number(counterPrice); if(n>0){ onPriceResponse(primaryBooking.id, 'counter', n); setPriceNotice('Counter offer sent to customer.'); } }} className="p-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold">Counter</button>
-              <button onClick={() => { onPriceResponse(primaryBooking.id, 'decline'); setPriceNotice('Customer was notified that the offer was declined.'); }} className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold">Decline</button>
+              <button onClick={() => { onUpdateBookingStatus(primaryBooking.id, 'helper_assigned'); setPriceNotice('₹' + (primaryBooking.customerOfferPrice || primaryBooking.pricing.totalAmount) + ' accepted. Customer can now proceed.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
+              <button onClick={() => { const n=Number(counterPrice); if(n>0){ const updated=(window as any); void updated; } }} className="p-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold">Counter</button>
+              <button onClick={() => { onUpdateBookingStatus(primaryBooking.id, 'cancelled'); setPriceNotice('Customer was notified that the offer was declined.'); }} className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold">Decline</button>
             </div>
-            </>
           )}
           {primaryBooking.priceNegotiationStatus === 'countered' && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for Gayathri to respond.</div>
@@ -443,7 +440,179 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
         </div>
       )}
 
-              {/* CRITICAL REQUIREMENT: NO LAST MINUTE SURPRISES PROTOCOL */}
+      {/* Exact Target Arrival Time Clock */}
+              <div className="p-3.5 rounded-2xl bg-white border border-amber-200 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-stone-500 font-medium">
+                    {lang === 'ta' ? 'கண்டிப்பாக சென்றடைய வேண்டிய நேரம்:' : 'Target Arrival Deadline:'}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight flex items-baseline gap-2">
+                    <span>
+                      {/* Calculate arrival time buffer: 15 mins prior to slot */}
+                      {primaryBooking.scheduledSlot.includes('10:00 AM')
+                        ? '09:45 AM'
+                        : primaryBooking.scheduledSlot.includes('08:00 AM')
+                        ? '07:45 AM'
+                        : primaryBooking.scheduledSlot.includes('02:00 PM')
+                        ? '01:45 PM'
+                        : '04:45 PM'}
+                    </span>
+                    <span className="text-xs font-bold text-amber-600 font-sans">
+                      (15m early buffer)
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-600 mt-0.5">
+                    {lang === 'ta' ? 'திட்டமிடப்பட்ட பணி தொடக்கம்:' : 'Visit scheduled start:'}{' '}
+                    <span className="font-semibold">{primaryBooking.scheduledSlot}</span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold">
+                    <Timer className="w-3.5 h-3.5 text-amber-700" />
+                    <span>~42 mins left</span>
+                  </div>
+                  <div className="text-[10px] text-stone-500 mt-1">
+                    1.8 km · ~8–10m travel
+                  </div>
+                </div>
+              </div>
+
+              {/* Exact Location & Flat Details */}
+              <div className="p-3.5 rounded-2xl bg-white border border-amber-200 space-y-2 text-xs">
+                <div className="font-bold text-stone-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-stone-800">
+                    <MapPin className="w-4 h-4 text-orange-600" />
+                    <span>
+                      {primaryBooking.flat}, {primaryBooking.block}, {primaryBooking.apartmentName}
+                    </span>
+                  </span>
+                  <span className="font-mono text-emerald-700 font-bold">
+                    Payout: ₹{primaryBooking.pricing.helperPayout}
+                  </span>
+                </div>
+
+                <div className="text-stone-600 text-[11px] pl-5.5 space-y-0.5">
+                  <div>Locality: <span className="font-semibold text-stone-800">{primaryBooking.locality}, Chennai</span></div>
+                  <div>Customer: <span className="font-semibold text-stone-800">{primaryCustomer?.name || 'Customer'}</span></div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-stone-500">
+                    <span>Phone:</span>
+                    <span className="font-mono text-stone-700">{maskPhoneNumber(primaryCustomer?.phone)}</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">Privacy Masked</span>
+                  </div>
+                  {primaryBooking.customerNotes && (
+                    <div className="p-1.5 rounded-lg bg-stone-50 text-[10px] text-stone-600 border border-stone-200 italic mt-1">
+                      Note: &ldquo;{primaryBooking.customerNotes}&rdquo;
+                    </div>
+                  )}
+                </div>
+
+                {/* Today's Job Work Scope Breakdown */}
+                <div className="pt-2 border-t border-stone-100 space-y-1.5">
+                  <div className="font-bold text-stone-900 flex items-center justify-between text-xs">
+                    <span>{lang === 'ta' ? "இன்றைய பணி (Today's Job):" : "Today's Job:"}</span>
+                    <span className="font-mono text-emerald-700 font-bold text-[11px]">
+                      {lang === 'ta' ? 'இறுதி ஒப்புதல் தொகை: ' : 'Final agreed price: '}₹{primaryBooking.pricing.totalAmount}
+                    </span>
+                  </div>
+
+                  {primaryBooking.workScopeBreakdown ? (
+                    <div className="space-y-1.5">
+                      {primaryBooking.workScopeBreakdown.homeCleaning && (
+                        <div className="p-2 bg-stone-50 rounded-xl border border-stone-200 space-y-0.5">
+                          <div className="font-bold text-stone-800 flex items-center gap-1.5 text-xs">
+                            <span>🧹</span>
+                            <span>Home Cleaning</span>
+                          </div>
+                          {primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping && (
+                            <div className="text-[11px] text-stone-600 pl-4 space-y-0.5">
+                              <div>• {primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} Bedrooms</div>
+                              <div>• {primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping.halls} Hall / Living room</div>
+                              <div>• {primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} Kitchen</div>
+                              {primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping.balcony && <div>• Balcony</div>}
+                              <div className="text-stone-500 capitalize">
+                                ({primaryBooking.workScopeBreakdown.homeCleaning.broomingMopping.cleaningType} Cleaning)
+                              </div>
+                            </div>
+                          )}
+                          {primaryBooking.workScopeBreakdown.homeCleaning.dusting && <div className="text-[11px] text-stone-600 pl-4">• Dusting</div>}
+                          {primaryBooking.workScopeBreakdown.homeCleaning.generalCleaning && <div className="text-[11px] text-stone-600 pl-4">• General Home Cleaning</div>}
+                          {primaryBooking.workScopeBreakdown.homeCleaning.kitchenCleaning && <div className="text-[11px] text-stone-600 pl-4">• Kitchen Cleaning</div>}
+                        </div>
+                      )}
+
+                      {primaryBooking.workScopeBreakdown.bathroomCleaning && (
+                        <div className="p-2 bg-cyan-50/70 rounded-xl border border-cyan-200 space-y-0.5">
+                          <div className="font-bold text-cyan-950 flex items-center gap-1.5 text-xs">
+                            <span>🚿</span>
+                            <span>Bathroom Cleaning (Separate Task)</span>
+                          </div>
+                          <div className="text-[11px] text-cyan-900 pl-4 space-y-0.5">
+                            <div>• {primaryBooking.workScopeBreakdown.bathroomCleaning.config.bathroomCount} Bathrooms</div>
+                            <div className="capitalize">• {primaryBooking.workScopeBreakdown.bathroomCleaning.config.cleaningType} Cleaning</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 text-[11px]">
+                      {primaryBooking.tasks.map((id) => {
+                        const t = MASTER_TASKS.find((task) => task.id === id);
+                        return (
+                          <span key={id} className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
+                            ✓ {t?.name || id}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct Action Buttons: Directions, Call, Mark On The Way */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-100">
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(primaryBooking.apartmentName + ' ' + primaryBooking.locality + ' Chennai')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{lang === 'ta' ? 'வழிசெலுத்தல் (வரைபடம்)' : 'Directions / Map'}</span>
+                  </a>
+
+                  <a
+                    href={`tel:${primaryCustomer?.phone || '+919840512099'}`}
+                    className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{lang === 'ta' ? 'வாடிக்கையாளரை அழைக்கவும்' : 'Call Customer'}</span>
+                  </a>
+                </div>
+              </div>
+
+              {primaryBooking && primaryBooking.priceNegotiationStatus && (
+            <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-stone-900">Price negotiation</div>
+                <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-900">{primaryBooking.priceNegotiationStatus}</span>
+              </div>
+              <div className="text-xs text-stone-600">Customer offer: <b>₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</b></div>
+              {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
+                <>
+                  <input type="number" min="1" value={counterPrice} onChange={(e) => setCounterPrice(e.target.value)} placeholder="Counter price ₹" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'accept'); setPriceNotice('Offer accepted.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
+                    <button type="button" onClick={() => { const n = Number(counterPrice); if (n > 0) { onPriceResponse(primaryBooking.id, 'counter', n); setPriceNotice('Counter offer sent.'); } }} className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">Counter</button>
+                    <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'decline'); setPriceNotice('Offer declined.'); }} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Decline</button>
+                  </div>
+                </>
+              )}
+              {primaryBooking.priceNegotiationStatus === 'countered' && <div className="text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for customer.</div>}
+              {priceNotice && <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">{priceNotice}</div>}
+            </div>
+          )}
+
+          {/* CRITICAL REQUIREMENT: NO LAST MINUTE SURPRISES PROTOCOL */}
               <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -974,5 +1143,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
           </div>
         </div>
       )}
+    </div>
   );
 };
