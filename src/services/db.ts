@@ -506,15 +506,18 @@ export const db = {
     if (action === 'accept') {
       const agreed = booking.customerOfferPrice ?? booking.negotiatedAgreedPrice ?? booking.pricing.totalAmount;
       booking.negotiatedAgreedPrice = agreed;
+      booking.helperCounterPrice = undefined;
       booking.pricing.baseAmount = agreed;
       booking.pricing.subtotal = agreed;
       booking.pricing.totalAmount = agreed;
       booking.pricing.helperPayout = agreed;
       booking.priceNegotiationStatus = 'accepted';
       booking.status = 'helper_assigned';
+      booking.timestamps.assignedAt = booking.timestamps.assignedAt || new Date().toISOString();
     } else if (action === 'counter') {
       if (!counterPrice || counterPrice <= 0) return undefined;
       booking.helperCounterPrice = counterPrice;
+      booking.negotiatedAgreedPrice = undefined;
       // A counter is a proposal, not an acceptance. Keep the original
       // customer offer for history, but display the helper counter as the
       // current proposed bill until the customer accepts it.
@@ -523,6 +526,7 @@ export const db = {
       booking.pricing.totalAmount = counterPrice;
       booking.priceNegotiationStatus = 'countered';
       booking.status = 'requested';
+      booking.timestamps.assignedAt = undefined;
     } else {
       booking.priceNegotiationStatus = 'declined';
       booking.status = 'cancelled';
@@ -556,6 +560,7 @@ export const db = {
       booking.customerOfferPrice = counterPrice;
       booking.helperCounterPrice = undefined;
       booking.pricing.baseAmount = counterPrice;
+      booking.timestamps.assignedAt = undefined;
       booking.pricing.subtotal = counterPrice;
       booking.pricing.totalAmount = counterPrice;
       booking.negotiatedAgreedPrice = undefined;
