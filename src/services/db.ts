@@ -530,7 +530,9 @@ export const db = {
     } else {
       const declinedHelper = db.getHelper(helperId);
       booking.priceNegotiationStatus = 'declined';
-      booking.status = 'replacement_required';
+      // Keep the original booking visible in the customer's Upcoming bookings.
+      // Decline is a negotiation outcome, not a cancellation.
+      booking.status = 'requested';
       booking.timestamps.assignedAt = undefined;
       booking.timestamps.cancelledAt = undefined;
       booking.cancellation = undefined;
