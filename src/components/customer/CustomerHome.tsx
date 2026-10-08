@@ -30,7 +30,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
   const [counterInput, setCounterInput] = useState<string>('');
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
-  const upcoming = myBookings.filter(b => ['requested','confirmed','helper_assigned'].includes(b.status));
+  const upcoming = myBookings.filter(b => ['requested','confirmed','helper_assigned','replacement_required'].includes(b.status));
   const active = myBookings.filter(b => ['on_the_way','started'].includes(b.status));
   const history = myBookings.filter(b => ['completed','cancelled'].includes(b.status));
 
