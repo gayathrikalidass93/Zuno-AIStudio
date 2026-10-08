@@ -27,6 +27,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
   const [tab, setTab] = useState<'home'|'bookings'|'profile'>('home');
   const [bookingTab, setBookingTab] = useState<'upcoming'|'active'|'history'>('upcoming');
   const [language, setLanguage] = useState(customer.preferredLanguage || 'English');
+  const [counterInput, setCounterInput] = useState<string>('');
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
   const upcoming = myBookings.filter(b => ['requested','confirmed','helper_assigned'].includes(b.status));
@@ -98,6 +99,13 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
             </div>
             <div className="mt-2 text-xs text-stone-600">Helper: <b>{helper?.name || 'Not assigned'}</b></div>
             <div className="mt-2 text-xs font-semibold text-amber-700">{statusLabel(b)}</div>
+            {b.priceNegotiationStatus === 'countered' && (
+              <div className="mt-3 flex gap-2" onClick={e=>e.stopPropagation()}>
+                <button onClick={() => db.customerRespondToCounter(b.id, customer.id, 'accept')} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept ₹{b.helperCounterPrice}</button>
+                <input type="number" min="1" value={counterInput} onChange={e=>setCounterInput(e.target.value)} placeholder="Counter ₹" className="min-w-0 flex-1 px-3 py-2 rounded-xl border text-xs" />
+                <button onClick={() => { const n=Number(counterInput); if(n>0){ db.customerRespondToCounter(b.id, customer.id, 'counter', n); setCounterInput(''); } }} className="px-3 py-2 rounded-xl border text-xs font-bold">Counter</button>
+              </div>
+            )}
           </button>;
         })}
         {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">No bookings in this section.</div>}
