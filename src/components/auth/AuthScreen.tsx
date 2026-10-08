@@ -137,11 +137,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    // Helper identity is exact: ID login is exact, and phone login compares
+    // the complete normalized registered number. Never use partial suffix matching,
+    // which can resolve one helper to another.
     const cleanDigits = input.replace(/\D/g, '');
     const found = state.helpers.find((h) => {
       if (h.id === input) return true;
       const hDigits = h.phone.replace(/\D/g, '');
-      return hDigits.endsWith(cleanDigits) || cleanDigits.endsWith(hDigits);
+      return cleanDigits.length >= 10 && hDigits === cleanDigits;
     });
 
     if (found) {
@@ -467,7 +470,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                       type="tel"
                       value={helperPhoneInput}
                       onChange={(e) => setHelperPhoneInput(e.target.value)}
-                      placeholder="97909 43210 (Kavitha) or 98401 23411 (Lakshmi)"
+                      placeholder="Enter your registered helper mobile number"
                       className="w-full pl-13 pr-3.5 py-3 rounded-2xl border border-stone-300 font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                       autoFocus
                     />
