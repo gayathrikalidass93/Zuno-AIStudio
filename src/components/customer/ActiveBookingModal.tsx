@@ -228,9 +228,7 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3">
               <div>
                 <div className="text-sm font-bold text-amber-900">
-                  {booking.cancellation?.previousHelperId
-                    ? `${helpers.find((h) => h.id === booking.cancellation?.previousHelperId)?.name || 'Helper'} declined your offer`
-                    : 'The helper declined your offer'}
+                  {helper?.name || 'The helper'} declined your offer
                 </div>
                 <div className="text-xs text-amber-800 mt-1">
                   Your booking is still here. We can search for another suitable helper for the same work and date.
