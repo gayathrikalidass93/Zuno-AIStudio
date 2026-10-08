@@ -46,7 +46,15 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
   };
 
   const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
-  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper' ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : b.priceNegotiationStatus === 'countered' ? `Helper countered at ₹${b.helperCounterPrice}. Awaiting your response.` : b.priceNegotiationStatus === 'accepted' ? `Final agreed price ₹${b.negotiatedAgreedPrice} · Helper assigned` : b.priceNegotiationStatus === 'declined' ? 'Helper declined the offer.' : b.status.replace(/_/g,' ');
+  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper'
+    ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent`
+    : b.priceNegotiationStatus === 'countered'
+      ? `Helper countered at ₹${b.helperCounterPrice}. Awaiting your response.`
+      : b.priceNegotiationStatus === 'accepted'
+        ? `Final agreed price ₹${b.negotiatedAgreedPrice ?? b.pricing.totalAmount} · Helper assigned`
+        : b.priceNegotiationStatus === 'declined'
+          ? 'Helper declined the offer.'
+          : b.status.replace(/_/g,' ');
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -89,15 +97,28 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
         </div>
         {list.slice(0,3).map(b => {
           const helper = getHelper(b);
-          return <button key={b.id} onClick={() => onViewBookingDetails(b.id)} className="w-full text-left bg-white border border-stone-200 rounded-2xl p-4 mb-2">
+          const isNegotiationFinal = b.priceNegotiationStatus === 'accepted';
+          return <div key={b.id} onClick={() => onViewBookingDetails(b.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onViewBookingDetails(b.id); }} className="w-full text-left bg-white border border-stone-200 rounded-2xl p-4 mb-2 cursor-pointer">
             <div className="flex justify-between gap-3">
               <div>
                 <div className="font-bold text-sm">{b.category || 'Household assistance'}</div>
                 <div className="text-xs text-stone-500 mt-1">{b.scheduledDate || 'Work date'} · {b.locality}</div>
               </div>
-              <span className="text-[10px] font-bold uppercase text-orange-700">{b.priceNegotiationStatus === 'pending_helper' ? 'Pending from Helper' : b.status.replace(/_/g,' ')}</span>
+              <span className="text-[10px] font-bold uppercase text-orange-700">
+                {b.priceNegotiationStatus === 'pending_helper'
+                  ? 'Pending from Helper'
+                  : b.priceNegotiationStatus === 'countered'
+                    ? 'Helper Countered'
+                    : b.priceNegotiationStatus === 'accepted'
+                      ? 'Helper Assigned'
+                      : b.status.replace(/_/g,' ')}
+              </span>
             </div>
-            <div className="mt-2 text-xs text-stone-600">Helper: <b>{helper?.name || 'Not assigned'}</b></div>
+            <div className="mt-2 text-xs text-stone-600">
+              {helper ? (
+                <><span>{isNegotiationFinal ? 'Helper: ' : 'Selected helper: '}</span><b>{helper.name}</b></>
+              ) : 'Helper: Not assigned'}
+            </div>
             <div className="mt-2 text-xs font-semibold text-amber-700">{statusLabel(b)}</div>
             {b.priceNegotiationStatus === 'countered' && (
               <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200" onClick={e=>e.stopPropagation()}>
@@ -111,7 +132,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
                 </div>
               </div>
             )}
-          </button>;
+          </div>;
         })}
         {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">No bookings in this section.</div>}
       </section>
