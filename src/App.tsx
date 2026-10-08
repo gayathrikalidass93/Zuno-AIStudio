@@ -88,10 +88,8 @@ export default function App() {
 
   const handleConfirmNewBooking = (newBookingData: any) => {
     const created = db.createBooking(newBookingData);
-    if (created.helperId) {
-      db.setActiveHelperId(created.helperId);
-    }
-    // Automatically open the booking tracker so user sees confirmation & OTP
+    // Creating a customer booking must NEVER change the authenticated session
+    // to the selected helper. The booking.helperId is the only relationship.
     setActiveBookingModalId(created.id);
   };
 
