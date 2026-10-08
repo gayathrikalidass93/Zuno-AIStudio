@@ -51,6 +51,7 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
 }) => {
   // Show manual replacement helper picker
   const [showHelperPicker, setShowHelperPicker] = useState<boolean>(false);
+  const [counterInput, setCounterInput] = useState<string>('');
 
   // 4-digit OTP state
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '']);
@@ -131,7 +132,12 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
     setIsVerifying(true);
     setOtpError(null);
 
-    const helperIdToUse = booking.helperId || helper?.id || 'hlp_priya';
+    const helperIdToUse = booking.helperId || helper?.id;
+    if (!helperIdToUse) {
+      setOtpError('No helper is assigned to this booking.');
+      setIsVerifying(false);
+      return;
+    }
     const result = onVerifyOtp
       ? onVerifyOtp(booking.id, code)
       : db.verifyStartOtp(booking.id, code, helperIdToUse);
@@ -344,6 +350,43 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
               </div>
             </div>
           )}
+          {/* PRICE NEGOTIATION STATE */}
+          {booking.priceNegotiationStatus && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
+              <div className="text-[10px] uppercase tracking-wide font-bold text-amber-800">Price Negotiation</div>
+              {booking.priceNegotiationStatus === 'pending_helper' && (
+                <>
+                  <div className="text-sm font-black text-stone-900">Your offer: ₹{booking.customerOfferPrice ?? booking.pricing.totalAmount}</div>
+                  <div className="text-xs text-amber-900">Your offer has been sent to the helper. <b>You can safely close this page.</b> We’ll notify you once the helper responds.</div>
+                  <div className="text-xs font-bold text-amber-800">Status: Pending from Helper</div>
+                </>
+              )}
+              {booking.priceNegotiationStatus === 'countered' && (
+                <>
+                  <div className="text-sm font-black text-stone-900">Helper's counter offer: ₹{booking.helperCounterPrice}</div>
+                  <div className="text-xs text-amber-900">Your original offer was ₹{booking.customerOfferPrice}. The helper has proposed ₹{booking.helperCounterPrice}. <b>The helper is not assigned yet.</b></div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button type="button" onClick={() => db.customerRespondToCounter(booking.id, customer.id, 'accept')} className="py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept ₹{booking.helperCounterPrice}</button>
+                    <button type="button" onClick={onClose} className="py-2.5 rounded-xl border border-stone-300 bg-white text-stone-700 text-xs font-bold">Close</button>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <input type="number" min="1" placeholder="Counter price ₹" className="min-w-0 flex-1 p-2.5 rounded-xl border border-amber-300 bg-white text-xs" onChange={(event) => setCounterInput(event.target.value)} />
+                    <button type="button" onClick={() => { const value=Number(counterInput); if(value>0){ db.customerRespondToCounter(booking.id, customer.id, 'counter', value); setCounterInput(''); } }} className="px-3 rounded-xl border border-amber-300 bg-white text-amber-900 text-xs font-bold">Counter</button>
+                  </div>
+                </>
+              )}
+              {booking.priceNegotiationStatus === 'accepted' && (
+                <>
+                  <div className="text-sm font-black text-emerald-800">Final agreed price: ₹{booking.negotiatedAgreedPrice ?? booking.pricing.totalAmount}</div>
+                  <div className="text-xs text-emerald-800 font-semibold">Helper accepted the negotiation. Your booking is confirmed with this final price.</div>
+                </>
+              )}
+              {booking.priceNegotiationStatus === 'declined' && (
+                <div className="text-xs text-rose-800 font-semibold">The helper declined the price offer. This booking is not confirmed.</div>
+              )}
+            </div>
+          )}
+
 
           {/* ============================================================== */}
           {/* PROGRESS TRACKER BAR */}
@@ -395,7 +438,7 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
           {/* ============================================================== */}
           {/* OTP CHECK-IN CARD & 4-DIGIT VERIFICATION ENTRY FIELD */}
           {/* ============================================================== */}
-          {['confirmed', 'helper_assigned', 'on_the_way'].includes(booking.status) && (
+          {['confirmed', 'helper_assigned', 'on_the_way'].includes(booking.status) && booking.priceNegotiationStatus !== 'pending_helper' && booking.priceNegotiationStatus !== 'countered' && (
             <div className="p-4 rounded-2xl bg-gradient-to-b from-orange-50/80 to-amber-50/60 border-2 border-orange-200/90 space-y-3.5">
               {/* Header Badge */}
               <div className="flex items-center justify-between">
