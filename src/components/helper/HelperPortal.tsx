@@ -639,6 +639,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
               </div>
             </div>
 
+          )}
           {/* CRITICAL REQUIREMENT: HOW OTP IS VISIBLE & ENTERED BY HELPERS */}
           {primaryBooking && (
             <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
@@ -1141,4 +1142,5 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
         </div>
       )}
   );
+    </div>
 };
