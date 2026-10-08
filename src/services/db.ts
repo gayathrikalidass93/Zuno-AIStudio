@@ -555,6 +555,7 @@ export const db = {
       booking.pricing.helperPayout = booking.helperCounterPrice;
       booking.priceNegotiationStatus = 'accepted';
       booking.status = 'helper_assigned';
+      booking.timestamps.assignedAt = booking.timestamps.assignedAt || new Date().toISOString();
     } else if (action === 'counter') {
       if (!counterPrice || counterPrice <= 0) return undefined;
       booking.customerOfferPrice = counterPrice;
