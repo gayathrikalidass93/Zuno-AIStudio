@@ -528,9 +528,24 @@ export const db = {
       booking.status = 'requested';
       booking.timestamps.assignedAt = undefined;
     } else {
+      const declinedHelper = db.getHelper(helperId);
       booking.priceNegotiationStatus = 'declined';
-      booking.status = 'cancelled';
-      booking.timestamps.cancelledAt = new Date().toISOString();
+      booking.status = 'replacement_required';
+      booking.timestamps.assignedAt = undefined;
+      booking.timestamps.cancelledAt = undefined;
+      booking.cancellation = undefined;
+      booking.replacement = {
+        status: 'searching',
+        originalHelperId: helperId,
+        offeredAt: new Date().toISOString(),
+      };
+
+      db.logAudit({
+        bookingId,
+        event: `Helper ${declinedHelper?.name || 'Helper'} declined the price offer. Customer can search for another helper.`,
+        actor: 'helper',
+        actorName: declinedHelper?.name || 'Helper',
+      });
     }
 
     db.logAudit({
@@ -737,6 +752,71 @@ export const db = {
       saveState();
       return { replacementFound: false };
     }
+  },
+
+  searchAlternativeHelpersAfterDecline(bookingId: string): { replacementFound: boolean; replacementHelper?: Helper } {
+    const booking = state.bookings.find((b) => b.id === bookingId);
+    if (!booking || booking.priceNegotiationStatus !== 'declined' || !booking.helperId) {
+      return { replacementFound: false };
+    }
+
+    const matches = matchHelpers(
+      state.helpers.filter((h) => h.id !== booking.helperId),
+      {
+        selectedTaskIds: booking.tasks,
+        locality: booking.locality,
+        apartmentName: booking.apartmentName,
+        isUrgent: false,
+        customer: db.getCustomer(booking.customerId),
+      }
+    ).filter((m) => m.isEligible);
+
+    const top = matches[0];
+    if (!top) {
+      booking.replacement = {
+        status: 'unfulfilled',
+        originalHelperId: booking.helperId,
+        offeredAt: new Date().toISOString(),
+      };
+      saveState();
+      return { replacementFound: false };
+    }
+
+    booking.replacement = {
+      status: 'found',
+      originalHelperId: booking.helperId,
+      replacementHelperId: top.helper.id,
+      matchScore: top.score,
+      offeredAt: new Date().toISOString(),
+    };
+    saveState();
+    return { replacementFound: true, replacementHelper: top.helper };
+  },
+
+  chooseAlternativeAfterDecline(bookingId: string, helperId: string): boolean {
+    const booking = state.bookings.find((b) => b.id === bookingId);
+    if (!booking || booking.priceNegotiationStatus !== 'declined') return false;
+    const selected = state.helpers.find((h) => h.id === helperId && h.isActive);
+    if (!selected || selected.id === booking.helperId) return false;
+
+    booking.helperId = selected.id;
+    booking.status = 'requested';
+    booking.customerOfferPrice = booking.customerOfferPrice ?? booking.pricing.totalAmount;
+    booking.helperCounterPrice = undefined;
+    booking.negotiatedAgreedPrice = undefined;
+    booking.priceNegotiationStatus = 'pending_helper';
+    booking.replacement = {
+      ...(booking.replacement || {
+        status: 'searching',
+        originalHelperId: '',
+      }),
+      status: 'accepted',
+      replacementHelperId: selected.id,
+      offeredAt: new Date().toISOString(),
+    };
+    booking.timestamps.assignedAt = undefined;
+    saveState();
+    return true;
   },
 
   acceptReplacement(bookingId: string): boolean {
