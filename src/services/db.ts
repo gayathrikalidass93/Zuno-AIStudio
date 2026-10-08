@@ -24,8 +24,10 @@ import {
 } from '../data/seedData';
 import { matchHelpers } from './matching';
 
-const STORAGE_KEY = 'zuno_marketplace_data_v2';
-const SESSION_STORAGE_KEY = 'zuno_active_session_v3';
+// Fresh clean datastore: old demo/localStorage records are intentionally orphaned.
+// Identity must never be reconstructed from legacy persisted helper records.
+const STORAGE_KEY = 'zuno_marketplace_data_v4_clean';
+const SESSION_STORAGE_KEY = 'zuno_active_session_v4_clean';
 
 let currentSession: AuthSession | null = null;
 try {
@@ -208,8 +210,9 @@ export const db = {
       privacyConsents: [],
       privacyRequests: [],
       activeCustomerId: 'cust_kartik',
-      activeHelperId: 'hlp_lakshmi',
+      activeHelperId: '',
     };
+    this.setSession(null);
     saveState();
   },
 
@@ -297,7 +300,7 @@ export const db = {
       if (found) return found;
     }
     const hlp = state.helpers.find((h) => h.id === state.activeHelperId);
-    return hlp || state.helpers.find((h) => h.id === 'hlp_kavitha') || state.helpers[0];
+    return hlp || INITIAL_HELPERS[0];
   },
 
   // Customer Management
