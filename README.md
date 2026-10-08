@@ -80,11 +80,11 @@ This repository is configured for Vercel preview deployments:
 - Production branch: `main`
 - Pull requests and non-main branches can be used as preview deployments.
 
-To deploy from GitHub, import `gayathrikalidass93/Zuno-AIStudio` into Vercel. Vercel automatically detects Vite projects and creates a deployment URL. Subsequent GitHub pushes can create new deployments. citeturn0search12
+To deploy from GitHub, import `gayathrikalidass93/Zuno-AIStudio` into Vercel. Vercel automatically detects Vite projects and creates a deployment URL. Subsequent GitHub pushes can create new deployments.
 
-For local/CLI deployment, Vercel documents the flow as linking the project, optionally pulling environment variables, then deploying a preview with `vercel`. citeturn0search9
+For local/CLI deployment, Vercel documents the flow as linking the project, optionally pulling environment variables, then deploying a preview with `vercel`.
 
-**Important:** this is currently a browser/local-state MVP preview. Do not add private API keys with a `VITE_` prefix; Vite bundles those variables into client-side code. citeturn0search11
+**Important:** this is currently a browser/local-state MVP preview. Do not add private API keys with a `VITE_` prefix; Vite bundles those variables into client-side code.
 
 ## 6. Current MVP Preview Flow
 
