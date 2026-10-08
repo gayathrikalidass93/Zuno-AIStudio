@@ -209,12 +209,62 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             <div className="flex justify-between"><span className="font-bold">Suggested price</span><b>₹{suggestedPrice}</b></div>
             <p className="text-xs text-stone-500 mt-1">Based on the actual work, not hours.</p>
             {counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
-            <div className="mt-3 flex gap-2"><input type="number" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/><button onClick={()=>{const n=Number(offer); if(n>0)setCounter(Math.max(n+50, Math.round(suggestedPrice*0.95)));}} className="px-4 rounded-xl bg-stone-900 text-white font-bold">Negotiate</button></div>
-            {counter>0 && <div className="grid grid-cols-2 gap-2 mt-2"><button onClick={()=>setAgreedPrice(counter)} className="p-3 rounded-xl bg-emerald-600 text-white font-bold">Accept ₹{counter}</button><button onClick={()=>setCounter(0)} className="p-3 rounded-xl border font-bold">Counter again</button></div>}
-            {agreedPrice>0 && <div className="mt-3 p-3 rounded-xl bg-emerald-50 text-emerald-800 font-bold">Final agreed price: ₹{agreedPrice}</div>}
+            <div className="mt-3 flex gap-2">
+              <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
+              <button
+                disabled={!selectedHelper || Number(offer) <= 0}
+                onClick={() => {
+                  const n = Number(offer);
+                  if (!selectedHelper || n <= 0) return;
+                  setAgreedPrice(n);
+                  onConfirmBooking({
+                    customerId: customer.id,
+                    helperId: selectedHelper.id,
+                    bookingMode: 'choose_helper',
+                    bookingType: 'casual',
+                    status: 'requested',
+                    category,
+                    tasks: [category === 'cleaning' ? 'clean_sweep' : category === 'bathroom_cleaning' ? 'bath_clean' : category === 'cooking' ? 'cook_home' : category === 'laundry' ? 'laundry_home' : category === 'organisation' ? 'organise_home' : 'family_help'],
+                    scheduledDate: workDate,
+                    scheduledSlot: 'Work-specific booking',
+                    durationHours: 1,
+                    estimatedWorkloadMinutes: 0,
+                    isUrgent: false,
+                    locality,
+                    apartmentName,
+                    block,
+                    flat,
+                    customerNotes: notes,
+                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+                    customerOfferPrice: n,
+                    negotiatedAgreedPrice: n,
+                    priceNegotiationStatus: 'pending_helper',
+                    paymentStatus: 'pay_after_arrival_or_completion',
+                    pricing: {
+                      baseHourlyRate: selectedHelper.hourlyRate,
+                      durationHours: 1,
+                      baseAmount: n,
+                      taskComplexityAdjustment: 0,
+                      urgentFee: 0,
+                      weekendFee: 0,
+                      multiTaskDiscount: 0,
+                      subtotal: n,
+                      zunoFee: 0,
+                      helperPayout: n,
+                      totalAmount: n,
+                    },
+                  });
+                  onClose();
+                }}
+                className="px-4 rounded-xl bg-stone-900 text-white font-bold disabled:opacity-40"
+              >
+                Negotiate
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-stone-500">Your offer will be sent to the helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>}
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
-          <button disabled={!agreedPrice} onClick={()=>setStep(7)} className={`w-full p-3.5 rounded-xl font-bold ${agreedPrice?'bg-orange-600 text-white':'bg-stone-200 text-stone-400'}`}>Confirm booking <ChevronRight className="inline w-4 h-4"/></button>
+          <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
         </div>}
 
         {step === 7 && <div className="space-y-5">
