@@ -31,7 +31,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [apartmentName, setApartmentName] = useState(customer.apartmentName || '');
   const [block, setBlock] = useState(customer.block || '');
   const [flat, setFlat] = useState(customer.flat || '');
-  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0,10));
+  const getMinWorkDate = () => { const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) today.setDate(today.getDate() + 1); return today.toISOString().slice(0,10); };\n  const [workDate, setWorkDate] = useState(getMinWorkDate());
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
   const [bedrooms, setBedrooms] = useState(2);
   const [halls, setHalls] = useState(1);
@@ -51,6 +51,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setApartmentName(customer.apartmentName || '');
     setBlock(customer.block || '');
     setFlat(customer.flat || '');
+    setWorkDate(getMinWorkDate());
     setCategory(preselectedCategory || 'cleaning');
     setHelperId(initialHelperId || '');
     setOffer('');
@@ -87,6 +88,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
   const buildBooking = () => {
     if (!selectedHelper) return;
+    if (workDate < getMinWorkDate()) { setStep(2); return; }
     const finalPrice = agreedPrice || counter || Number(offer) || suggestedPrice;
     const taskId = category === 'cleaning' ? 'clean_sweep'
       : category === 'bathroom_cleaning' ? 'bath_clean'
@@ -99,7 +101,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       helperId: selectedHelper.id,
       bookingMode: 'choose_helper',
       bookingType: 'casual',
-      status: 'confirmed',
+      status: 'requested',
       category,
       tasks: [taskId],
       scheduledDate: workDate,
@@ -113,7 +115,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       flat,
       customerNotes: notes,
       workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+      customerOfferPrice: finalPrice,
       negotiatedAgreedPrice: finalPrice,
+      priceNegotiationStatus: 'pending_helper',
       paymentStatus: 'pay_after_arrival_or_completion',
       pricing: {
         baseHourlyRate: selectedHelper.hourlyRate,
@@ -156,8 +160,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
         {step === 2 && <div className="space-y-4">
           <h2 className="font-black text-xl">Choose work date</h2>
           <p className="text-sm text-stone-500">Helpers are matched by the work requested, not by time slots.</p>
-          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>setWorkDate(e.target.value)} className="mt-1 w-full p-3 rounded-xl border"/></label>
-          <button onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Continue <ChevronRight className="inline w-4 h-4"/></button>
+          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <button disabled={workDate < getMinWorkDate()} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
         {step === 3 && <div className="space-y-4">
@@ -213,8 +217,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 7 && <div className="space-y-5">
           <div className="text-center"><div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><Check className="w-7 h-7"/></div><h2 className="font-black text-xl mt-3">Ready to confirm</h2></div>
-          <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 text-sm"><b>Payment is not taken now.</b><br/>Payment will be collected through Razorpay after the helper reaches your home or after the work is completed.</div>
-          <button onClick={buildBooking} className="w-full p-4 rounded-2xl bg-orange-600 text-white font-black">Confirm booking · Pay later</button>
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm"><b>₹{agreedPrice} offer sent to {selectedHelper?.name}.</b><br/>We'll check with the helper and update you. Payment is not taken now; Razorpay payment will be collected after the helper reaches your home or after the work is completed.</div>
+          <button onClick={buildBooking} className="w-full p-4 rounded-2xl bg-orange-600 text-white font-black">Send offer · Pay later</button>
           <button onClick={()=>setStep(6)} className="w-full p-3 rounded-xl border font-bold">Back</button>
         </div>}
       </div>
