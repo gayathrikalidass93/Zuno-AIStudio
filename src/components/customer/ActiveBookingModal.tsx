@@ -595,6 +595,11 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
                   <div className="text-xs text-stone-500 mt-0.5">
                     {helper.locality} · {helper.experienceYears} yrs exp · {helper.completedJobs} visits
                   </div>
+                  {booking.priceNegotiationStatus !== 'accepted' && (
+                    <div className="text-[10px] text-amber-700 font-semibold mt-1">
+                      Selected helper · assignment is pending final price agreement
+                    </div>
+                  )}
 
                   {helper.isChildcareVerified && (
                     <div className="flex items-center gap-1 text-[10px] text-amber-700 font-bold mt-1">
