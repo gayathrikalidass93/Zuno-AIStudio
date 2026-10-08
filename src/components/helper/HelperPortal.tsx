@@ -82,8 +82,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [customerRating, setCustomerRating] = useState<number>(5);
   const [counterPrice, setCounterPrice] = useState<string>('');
   const [priceNotice, setPriceNotice] = useState<string | null>(null);
-  const [counterPrice, setCounterPrice] = useState<string>('');
-  const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
   // Selected booking state (for helpers with multiple shifts)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
