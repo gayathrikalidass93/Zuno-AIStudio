@@ -10,7 +10,7 @@ import {
 interface HeaderProps {
   currentRole: AuthRole;
   activeCustomer: Customer;
-  activeHelper: Helper;
+  activeHelper?: Helper;
   onLogout: () => void;
   onResetDemo: () => void;
   onOpenPrivacy?: () => void;
@@ -74,10 +74,10 @@ export const Header: React.FC<HeaderProps> = ({
           {currentRole === 'helper' && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
               <div className="w-5 h-5 rounded-full bg-emerald-700 text-white text-[10px] font-bold flex items-center justify-center font-display">
-                {activeHelper.name.split(' ')[0][0]}
+                {activeHelper?.name.split(' ')[0][0]}
               </div>
               <span className="font-semibold max-w-[120px] truncate">
-                {activeHelper.name}
+                {activeHelper?.name}
               </span>
             </div>
           )}
