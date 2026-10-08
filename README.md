@@ -55,66 +55,47 @@ A customer books a trusted nearby helper for **1–4 hours** and bundles diverse
 
 ## 4. How to Run Locally
 
-### Run Vite Web Application:
+### Run the Vite web application
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Run local development server (Port 3000)
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+Open the local URL shown by Vite (the project defaults to port 3000).
 
-## 5. Live Demo Walkthrough (12-Step Test Scenario)
-
-You can switch between **Customer**, **Helper App**, and **Admin Tower** anytime via the top navigation bar:
-
-1. **Customer View:** Open ZUNO homepage. Notice the apartment density banner (*Purva Windermere, Pallavaram · 16 helpers nearby*).
-2. **Build My Visit:** Tap **"Build My Visit"**.
-3. **Select Tasks:**
-   - Cleaning: Sweep, Mop, Wash vessels
-   - Cooking: Vegetable preparation, Cook lunch (Meals)
-4. **Task Intelligence:** Notice the workload estimator calculates `~3.0 hrs (180 mins)` and provides feasibility guidance. Select **3 Hours**.
-5. **Mode A / Matching:** Tap **"Choose Helper"**. See **Lakshmi Narayanan** ranked at **96% Match** with highlights (*✓ 5/5 tasks matched, ✓ 1.8 km away, ✓ 4.9★ rating, ✓ Previously served your society*).
-6. **Bill Transparency:** Review the breakdown (Base: ₹747, Multi-task discount: -₹75, Total: ₹672, Helper Payout: ₹551 [82%], ZUNO Fee: ₹121 [18%]). Tap **Confirm & Book**.
-7. **Customer Tracker:** Note the 4-digit start OTP (e.g. `4821`).
-8. **Helper App View:** Switch to **Helper App** in the top bar. You see Lakshmi's dashboard with today's jobs and transparent payout.
-9. **OTP Check-in:** Helper taps **"Start Visit"**, enters OTP `4821`, and the visit officially starts.
-10. **Emergency Replacement Test:** Helper taps **"Cancel Due to Emergency"**. Switch back to Customer view to see ZUNO's automated **Replacement Engine** offer candidate **Anandhi Sekar (94% match)**.
-11. **Admin Control Tower:** Switch to **Admin Tower**. Inspect the **Supply-Demand View** (Pallavaram shortage: +8 helpers vs Chromepet surplus: +3), check verification checklists, or upload CSV files.
-12. **Book Again:** Completed visits enable 1-click **Book Again** with pre-filled preferences.
-
----
-
-## 6. How to Add Services or Change Pricing
-
-### Adding a New Task:
-Edit `/src/data/services.ts` and append to `MASTER_TASKS`:
-```typescript
-{
-  id: 'clean_balcony',
-  category: 'cleaning',
-  name: 'Balcony wash & railing wipe',
-  tamilName: 'பால்கனி சுத்தம்',
-  estimatedMinutes: 30,
-  description: 'Mop balcony tiles and wipe handrails'
-}
+### Create a production build locally
+```bash
+npm run lint
+npm run build
+npm run preview
 ```
 
-### Changing Pricing:
-1. In the **Admin Control Tower**, navigate to **Pricing Engine**.
-2. Modify Base Hourly Rate (₹249), Helper Payout Share (82%), Multi-Task Discount (10%), or Urgent Premium (20%).
-3. Click **Update Pricing Engine Rules**. All subsequent bookings will compute against updated rules.
+## 5. Online Preview with Vercel
 
-### Importing Helpers via CSV:
-1. In the **Admin Control Tower**, select **CSV Data Import**.
-2. Click **Load Sample Helper CSV Template**.
-3. Click **Validate & Preview Rows** to check for missing fields or invalid localities.
-4. Click **Confirm & Save to Database**.
+This repository is configured for Vercel preview deployments:
 
----
+- Build command: `npm run build`
+- Output directory: `dist`
+- SPA fallback: all routes serve `index.html`
+- Production branch: `main`
+- Pull requests and non-main branches can be used as preview deployments.
+
+To deploy from GitHub, import `gayathrikalidass93/Zuno-AIStudio` into Vercel. Vercel automatically detects Vite projects and creates a deployment URL. Subsequent GitHub pushes can create new deployments. citeturn0search12
+
+For local/CLI deployment, Vercel documents the flow as linking the project, optionally pulling environment variables, then deploying a preview with `vercel`. citeturn0search9
+
+**Important:** this is currently a browser/local-state MVP preview. Do not add private API keys with a `VITE_` prefix; Vite bundles those variables into client-side code. citeturn0search11
+
+## 6. Current MVP Preview Flow
+
+1. Customer opens ZUNO.
+2. Customer selects one of the six MVP services.
+3. Customer enters the simple work-specific questions.
+4. Customer reviews matching helpers.
+5. Customer selects a helper and negotiates the price.
+6. Customer confirms the booking.
+7. Payment is intentionally deferred until helper arrival or work completion; live Razorpay processing is not yet connected.
+8. Customer and helper views resolve the booking relationship through explicit customer/helper IDs.
 
 ## 7. Privacy Architecture & DPDP Alignment (Digital Personal Data Protection Act, 2023)
 
