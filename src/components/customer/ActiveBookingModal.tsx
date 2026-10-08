@@ -26,6 +26,8 @@ interface ActiveBookingModalProps {
   helpers?: Helper[];
   onAcceptReplacement: (bookingId: string) => void;
   onChooseReplacementHelper?: (bookingId: string, helperId: string) => void;
+  onSearchAlternativeHelpers?: (bookingId: string) => void;
+  onChooseAlternativeAfterDecline?: (bookingId: string, helperId: string) => void;
   onVerifyOtp?: (bookingId: string, enteredOtp: string) => { success: boolean; message: string };
   onSwitchToHelperView?: () => void;
   onSubmitRating: (bookingId: string, ratingData: any) => void;
@@ -42,6 +44,8 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
   helpers = [],
   onAcceptReplacement,
   onChooseReplacementHelper,
+  onSearchAlternativeHelpers,
+  onChooseAlternativeAfterDecline,
   onVerifyOtp,
   onSwitchToHelperView,
   onSubmitRating,
@@ -220,7 +224,57 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
           {/* ============================================================== */}
           {/* REPLACEMENT ENGINE NOTIFICATION CARD (If helper cancelled) */}
           {/* ============================================================== */}
-          {booking.status === 'replacement_required' && (
+          {booking.status === 'replacement_required' && booking.priceNegotiationStatus === 'declined' && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3">
+              <div>
+                <div className="text-sm font-bold text-amber-900">
+                  {booking.cancellation?.previousHelperId
+                    ? `${helpers.find((h) => h.id === booking.cancellation?.previousHelperId)?.name || 'Helper'} declined your offer`
+                    : 'The helper declined your offer'}
+                </div>
+                <div className="text-xs text-amber-800 mt-1">
+                  Your booking is still here. We can search for another suitable helper for the same work and date.
+                </div>
+              </div>
+              <button
+                onClick={() => onSearchAlternativeHelpers?.(booking.id)}
+                className="w-full py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs"
+              >
+                Find Other Helpers
+              </button>
+
+              {booking.replacement?.status === 'found' && booking.replacement.replacementHelperId && (
+                <div className="p-3.5 rounded-xl bg-white border border-amber-200 space-y-2">
+                  {(() => {
+                    const candidate = helpers.find((h) => h.id === booking.replacement?.replacementHelperId);
+                    if (!candidate) return null;
+                    return (
+                      <>
+                        <div className="text-xs font-bold text-stone-900">Suggested helper</div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-stone-900">{candidate.name}</div>
+                            <div className="text-[10px] text-stone-500">{candidate.locality} · {candidate.rating}★</div>
+                          </div>
+                          <button
+                            onClick={() => onChooseAlternativeAfterDecline?.(booking.id, candidate.id)}
+                            className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                          >
+                            Send ₹{booking.customerOfferPrice ?? booking.pricing.totalAmount} Offer
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-stone-500">
+                          The new helper will receive your existing offer and can accept or counter.
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {booking.status === 'replacement_required' && booking.priceNegotiationStatus !== 'declined' && (
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3">
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
