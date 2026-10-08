@@ -113,10 +113,10 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       flat,
       customerNotes: notes,
       workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
-      negotiatedPrice: finalPrice,
+      negotiatedAgreedPrice: finalPrice,
       paymentStatus: 'pay_after_arrival_or_completion',
       pricing: {
-        baseHourlyRate: 0,
+        baseHourlyRate: selectedHelper.hourlyRate,
         durationHours: 1,
         baseAmount: finalPrice,
         taskComplexityAdjustment: 0,
