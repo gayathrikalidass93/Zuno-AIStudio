@@ -35,6 +35,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
+  const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : ['cleaning']);
   const [bedrooms, setBedrooms] = useState(2);
   const [halls, setHalls] = useState(1);
   const [kitchens, setKitchens] = useState(1);
@@ -55,6 +56,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setFlat(customer.flat || '');
     setWorkDate(getMinWorkDate());
     setCategory(preselectedCategory || 'cleaning');
+    setSelectedCategories(preselectedCategory ? [preselectedCategory] : ['cleaning']);
     setHelperId(initialHelperId || '');
     setOffer('');
     setCounter(0);
@@ -62,14 +64,16 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setNotes('');
   }, [isOpen, customer, preselectedCategory, initialHelperId]);
 
-  const suggestedPrice = useMemo(() => {
-    if (category === 'cleaning') return Math.max(250, bedrooms * 100 + halls * 80 + kitchens * 90 + 100);
-    if (category === 'bathroom_cleaning') return Math.max(199, bathrooms * 180);
-    if (category === 'cooking') return 300;
-    if (category === 'laundry') return 250;
-    if (category === 'organisation') return 300;
+  const priceForCategory = (service: ServiceCategory) => {
+    if (service === 'cleaning') return Math.max(250, bedrooms * 100 + halls * 80 + kitchens * 90 + 100);
+    if (service === 'bathroom_cleaning') return Math.max(199, bathrooms * 180);
+    if (service === 'cooking') return 300;
+    if (service === 'laundry') return 250;
+    if (service === 'organisation') return 300;
     return 300;
-  }, [category, bedrooms, halls, kitchens, bathrooms]);
+  };
+
+  const suggestedPrice = useMemo(() => selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms]);
 
   const eligibleHelpers = useMemo(() => {
     const sameArea = helpers.filter(h => h.isActive && (
@@ -82,21 +86,17 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
   const selectedHelper = helpers.find(h => h.id === helperId);
 
-  const workDescription = category === 'cleaning'
-    ? `${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'} Cleaning`
-    : category === 'bathroom_cleaning'
-      ? `${bathrooms} bathroom(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'} Cleaning`
-      : services.find(s => s.id === category)?.name || category;
+  const workDescription = selectedCategories.map((service) => {
+    if (service === 'cleaning') return `Brooming / Mopping: ${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
+    if (service === 'bathroom_cleaning') return `Bathroom Cleaning: ${bathrooms} bathroom(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
+    return services.find(s => s.id === service)?.name || service;
+  }).join(' + ');
 
   const buildBooking = () => {
     if (!selectedHelper) return;
     if (workDate < getMinWorkDate()) { setStep(2); return; }
     const finalPrice = agreedPrice || counter || Number(offer) || suggestedPrice;
-    const taskId = category === 'cleaning' ? 'clean_sweep'
-      : category === 'bathroom_cleaning' ? 'bath_clean'
-      : category === 'cooking' ? 'cook_home'
-      : category === 'laundry' ? 'laundry_home'
-      : category === 'organisation' ? 'organise_home' : 'family_help';
+    const taskIds = selectedCategories.map((service) => service === 'cleaning' ? 'clean_sweep' : service === 'bathroom_cleaning' ? 'bath_clean' : service === 'cooking' ? 'cook_home' : service === 'laundry' ? 'laundry_home' : service === 'organisation' ? 'organise_home' : 'family_help');
 
     onConfirmBooking({
       customerId: customer.id,
@@ -105,7 +105,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       bookingType: 'casual',
       status: 'requested',
       category,
-      tasks: [taskId],
+      tasks: taskIds,
       scheduledDate: workDate,
       scheduledSlot: 'Work-specific booking',
       durationHours: 1,
@@ -168,8 +168,18 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 3 && <div className="space-y-4">
           <h2 className="font-black text-xl">What work do you need?</h2>
-          <div className="grid grid-cols-2 gap-3">{services.map(s=><button key={s.id} onClick={()=>setCategory(s.id)} className={`p-4 rounded-2xl border text-left ${category===s.id?'border-orange-500 bg-orange-50':'border-stone-200'}`}><div className="text-2xl">{s.icon}</div><div className="font-bold text-sm mt-2">{s.name}</div></button>)}</div>
-          <button onClick={()=>setStep(4)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Continue <ChevronRight className="inline w-4 h-4"/></button>
+          <p className="text-sm text-stone-500">Select one or more services. They stay together in the same booking.</p>
+          <div className="grid grid-cols-2 gap-3">{services.map(s=><button key={s.id} onClick={()=>{
+            setSelectedCategories(prev => {
+              const next = prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id];
+              if (next.length) setCategory(next[0]);
+              return next;
+            });
+          }} className={`p-4 rounded-2xl border text-left ${selectedCategories.includes(s.id)?'border-orange-500 bg-orange-50':'border-stone-200'}`}>
+            <div className="text-2xl">{s.icon}</div><div className="font-bold text-sm mt-2">{s.name}</div>
+            {selectedCategories.includes(s.id) && <div className="text-[10px] font-bold text-orange-700 mt-1">Selected</div>}
+          </button>)}</div>
+          <button disabled={!selectedCategories.length} onClick={()=>setStep(4)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
         {step === 4 && <div className="space-y-4">
@@ -224,7 +234,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     bookingType: 'casual',
                     status: 'requested',
                     category,
-                    tasks: [category === 'cleaning' ? 'clean_sweep' : category === 'bathroom_cleaning' ? 'bath_clean' : category === 'cooking' ? 'cook_home' : category === 'laundry' ? 'laundry_home' : category === 'organisation' ? 'organise_home' : 'family_help'],
+                    tasks: selectedCategories.map((service) => service === 'cleaning' ? 'clean_sweep' : service === 'bathroom_cleaning' ? 'bath_clean' : service === 'cooking' ? 'cook_home' : service === 'laundry' ? 'laundry_home' : service === 'organisation' ? 'organise_home' : 'family_help'),
                     scheduledDate: workDate,
                     scheduledSlot: 'Work-specific booking',
                     durationHours: 1,
