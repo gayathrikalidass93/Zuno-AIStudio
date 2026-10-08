@@ -481,7 +481,7 @@ export const db = {
       timestamps: {
         requestedAt: new Date().toISOString(),
         confirmedAt: bookingData.status === 'confirmed' ? new Date().toISOString() : undefined,
-        assignedAt: bookingData.helperId ? new Date().toISOString() : undefined,
+        assignedAt: bookingData.priceNegotiationStatus === 'accepted' && bookingData.helperId ? new Date().toISOString() : undefined,
       },
     };
 
