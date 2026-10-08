@@ -345,7 +345,7 @@ export const db = {
     return newCustomer;
   },
 
-  toggleFavouriteHelper(customerId: string, helperId: string): boolean {
+  updateCustomerLanguage(customerId: string, language: string) {\n    const cust = state.customers.find((c) => c.id === customerId);\n    if (!cust) return;\n    cust.preferredLanguage = language;\n    saveState();\n  },\n\n  toggleFavouriteHelper(customerId: string, helperId: string): boolean {
     const cust = state.customers.find((c) => c.id === customerId);
     if (!cust) return false;
     const isFav = cust.favouriteHelperIds.includes(helperId);
