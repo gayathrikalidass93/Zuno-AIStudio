@@ -46,7 +46,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
   };
 
   const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
-  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper' ? `₹${b.customerOfferPrice ?? b.negotiatedAgreedPrice ?? b.pricing.totalAmount} offer sent — we'll check with the helper and update you.` : b.priceNegotiationStatus === 'countered' ? `Helper countered at ₹${b.helperCounterPrice}. Please review the new offer.` : b.priceNegotiationStatus === 'accepted' ? `Helper accepted ₹${b.negotiatedAgreedPrice}.` : b.priceNegotiationStatus === 'declined' ? 'Helper declined the offer.' : b.status.replace(/_/g,' ');
+  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper' ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.negotiatedAgreedPrice ?? b.pricing.totalAmount} sent` : b.priceNegotiationStatus === 'countered' ? `Helper countered at ₹${b.helperCounterPrice}. Please review the new offer.` : b.priceNegotiationStatus === 'accepted' ? `Helper accepted ₹${b.negotiatedAgreedPrice}.` : b.priceNegotiationStatus === 'declined' ? 'Helper declined the offer.' : b.status.replace(/_/g,' ');
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -95,7 +95,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
                 <div className="font-bold text-sm">{b.category || 'Household assistance'}</div>
                 <div className="text-xs text-stone-500 mt-1">{b.scheduledDate || 'Work date'} · {b.locality}</div>
               </div>
-              <span className="text-[10px] font-bold uppercase text-orange-700">{b.priceNegotiationStatus === 'pending_helper' ? 'Awaiting helper' : b.status.replace(/_/g,' ')}</span>
+              <span className="text-[10px] font-bold uppercase text-orange-700">{b.priceNegotiationStatus === 'pending_helper' ? 'Pending from Helper' : b.status.replace(/_/g,' ')}</span>
             </div>
             <div className="mt-2 text-xs text-stone-600">Helper: <b>{helper?.name || 'Not assigned'}</b></div>
             <div className="mt-2 text-xs font-semibold text-amber-700">{statusLabel(b)}</div>
