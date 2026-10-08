@@ -227,7 +227,8 @@ export default function App() {
         onChooseReplacementHelper={(bkId, hId) => db.chooseReplacementHelper(bkId, hId)}
         onVerifyOtp={(bkId, otp) => {
           const b = state.bookings.find((item) => item.id === bkId);
-          if (!b?.helperId) return { success: false, message: 'No helper is assigned to this booking.' };\n          return db.verifyStartOtp(bkId, otp, b.helperId);
+          if (!b?.helperId) return { success: false, message: 'No helper is assigned to this booking.' };
+          return db.verifyStartOtp(bkId, otp, b.helperId);
         }}
         onSubmitRating={handleSubmitRating}
         onBookAgain={handleBookAgain}
