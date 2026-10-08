@@ -97,6 +97,14 @@ export default function App() {
     db.acceptReplacement(bookingId);
   };
 
+  const handleSearchAlternativeHelpers = (bookingId: string) => {
+    db.searchAlternativeHelpersAfterDecline(bookingId);
+  };
+
+  const handleChooseAlternativeHelper = (bookingId: string, helperId: string) => {
+    db.chooseAlternativeAfterDecline(bookingId, helperId);
+  };
+
   const handleSubmitRating = (bookingId: string, ratingData: any) => {
     db.submitRating(bookingId, ratingData);
   };
@@ -251,6 +259,8 @@ export default function App() {
         helpers={state.helpers}
         onAcceptReplacement={handleAcceptReplacement}
         onChooseReplacementHelper={(bkId, hId) => db.chooseReplacementHelper(bkId, hId)}
+        onSearchAlternativeHelpers={handleSearchAlternativeHelpers}
+        onChooseAlternativeAfterDecline={handleChooseAlternativeHelper}
         onVerifyOtp={(bkId, otp) => {
           const b = state.bookings.find((item) => item.id === bkId);
           if (!b?.helperId) return { success: false, message: 'No helper is assigned to this booking.' };
