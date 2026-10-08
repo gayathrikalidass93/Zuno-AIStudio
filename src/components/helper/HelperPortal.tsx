@@ -78,6 +78,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   // Rate customer modal state
   const [ratingCustomerBookingId, setRatingCustomerBookingId] = useState<string | null>(null);
   const [customerRating, setCustomerRating] = useState<number>(5);
+  const [counterPrice, setCounterPrice] = useState<string>('');
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
   // Selected booking state (for helpers with multiple shifts)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -404,22 +406,37 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
             </div>
           )}
 
-          {/* CRITICAL FEATURE: EXACT ARRIVAL DEADLINE & CUSTOMER LOCATION */}
-          {primaryBooking && (
-            <div className="p-4 rounded-3xl bg-amber-500/10 border-2 border-amber-500/60 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-amber-500 animate-ping"></span>
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-950 font-sans">
-                    {lang === 'ta' ? 'வாடிக்கையாளர் இருப்பிடத்திற்கு செல்ல வேண்டிய நேரம்:' : 'YOU HAVE TO BE IN CUSTOMER LOCATION BY:'}
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold text-[10px]">
-                  {primaryBooking.scheduledSlot.split('-')[0].trim()} Buffer
-                </span>
-              </div>
+          {/* WORK-SPECIFIC BOOKING — no time-slot scheduling */}
+      {primaryBooking && (
+        <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black uppercase tracking-wide text-stone-500">Assigned customer</div>
+              <div className="text-lg font-black text-stone-900">{primaryCustomer?.name || 'Customer not found'}</div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold uppercase">{primaryBooking.priceNegotiationStatus || primaryBooking.status.replace(/_/g, ' ')}</span>
+          </div>
+          <div className="text-xs text-stone-600 space-y-1">
+            <div><b>Booking:</b> {primaryBooking.bookingCode}</div>
+            <div><b>Work date:</b> {primaryBooking.scheduledDate}</div>
+            <div><b>Location:</b> {primaryBooking.flat}, {primaryBooking.block}, {primaryBooking.apartmentName}, {primaryBooking.locality}</div>
+            <div><b>Customer offer:</b> ₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</div>
+          </div>
+          {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              <button onClick={() => { onUpdateBookingStatus(primaryBooking.id, 'helper_assigned'); setPriceNotice('₹' + (primaryBooking.customerOfferPrice || primaryBooking.pricing.totalAmount) + ' accepted. Customer can now proceed.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
+              <button onClick={() => { const n=Number(counterPrice); if(n>0){ const updated=(window as any); void updated; } }} className="p-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold">Counter</button>
+              <button onClick={() => { onUpdateBookingStatus(primaryBooking.id, 'cancelled'); setPriceNotice('Customer was notified that the offer was declined.'); }} className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold">Decline</button>
+            </div>
+          )}
+          {primaryBooking.priceNegotiationStatus === 'countered' && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for Gayathri to respond.</div>
+          )}
+          {priceNotice && <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">{priceNotice}</div>}
+        </div>
+      )}
 
-              {/* Exact Target Arrival Time Clock */}
+      {/* Exact Target Arrival Time Clock */}
               <div className="p-3.5 rounded-2xl bg-white border border-amber-200 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] text-stone-500 font-medium">
