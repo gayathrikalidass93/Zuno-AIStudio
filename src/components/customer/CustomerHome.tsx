@@ -46,7 +46,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
   };
 
   const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
-  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper' ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.negotiatedAgreedPrice ?? b.pricing.totalAmount} sent` : b.priceNegotiationStatus === 'countered' ? `Helper countered at ₹${b.helperCounterPrice}. Please review the new offer.` : b.priceNegotiationStatus === 'accepted' ? `Helper accepted ₹${b.negotiatedAgreedPrice}.` : b.priceNegotiationStatus === 'declined' ? 'Helper declined the offer.' : b.status.replace(/_/g,' ');
+  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper' ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : b.priceNegotiationStatus === 'countered' ? `Helper countered at ₹${b.helperCounterPrice}. Awaiting your response.` : b.priceNegotiationStatus === 'accepted' ? `Final agreed price ₹${b.negotiatedAgreedPrice} · Helper assigned` : b.priceNegotiationStatus === 'declined' ? 'Helper declined the offer.' : b.status.replace(/_/g,' ');
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -100,10 +100,15 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
             <div className="mt-2 text-xs text-stone-600">Helper: <b>{helper?.name || 'Not assigned'}</b></div>
             <div className="mt-2 text-xs font-semibold text-amber-700">{statusLabel(b)}</div>
             {b.priceNegotiationStatus === 'countered' && (
-              <div className="mt-3 flex gap-2" onClick={e=>e.stopPropagation()}>
-                <button onClick={() => db.customerRespondToCounter(b.id, customer.id, 'accept')} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept ₹{b.helperCounterPrice}</button>
-                <input type="number" min="1" value={counterInput} onChange={e=>setCounterInput(e.target.value)} placeholder="Counter ₹" className="min-w-0 flex-1 px-3 py-2 rounded-xl border text-xs" />
-                <button onClick={() => { const n=Number(counterInput); if(n>0){ db.customerRespondToCounter(b.id, customer.id, 'counter', n); setCounterInput(''); } }} className="px-3 py-2 rounded-xl border text-xs font-bold">Counter</button>
+              <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200" onClick={e=>e.stopPropagation()}>
+                <div className="text-[11px] text-amber-900 font-semibold mb-2">
+                  The helper has proposed a new price. This booking is <b>not confirmed yet</b>.
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => db.customerRespondToCounter(b.id, customer.id, 'accept')} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept ₹{b.helperCounterPrice}</button>
+                  <input type="number" min="1" value={counterInput} onChange={e=>setCounterInput(e.target.value)} placeholder="Counter ₹" className="min-w-0 flex-1 px-3 py-2 rounded-xl border text-xs" />
+                  <button onClick={() => { const n=Number(counterInput); if(n>0){ db.customerRespondToCounter(b.id, customer.id, 'counter', n); setCounterInput(''); } }} className="px-3 py-2 rounded-xl border text-xs font-bold">Counter</button>
+                </div>
               </div>
             )}
           </button>;
