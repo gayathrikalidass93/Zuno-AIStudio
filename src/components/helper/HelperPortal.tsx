@@ -638,7 +638,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                 </button>
               </div>
             </div>
-          )}
 
           {/* CRITICAL REQUIREMENT: HOW OTP IS VISIBLE & ENTERED BY HELPERS */}
           {primaryBooking && (
