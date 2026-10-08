@@ -109,10 +109,26 @@ export default function App() {
 
   const handleLoginSuccess = (role: AuthRole, userId: string) => {
     if (role === 'customer') {
-      db.setActiveCustomerId(userId);
+      const customer = state.customers.find((c) => c.id === userId);
+      if (!customer) return;
+      db.setSession({
+        role: 'customer',
+        userId: customer.id,
+        userName: customer.name,
+        phone: customer.phone,
+      });
     } else if (role === 'helper') {
-      db.setActiveHelperId(userId);
-    } else if (role === 'admin') {
+      const helper = state.helpers.find((h) => h.id === userId);
+      if (!helper) return;
+      // Helper identity comes only from the authenticated helper ID.
+      // Do not route through the legacy active-helper selector.
+      db.setSession({
+        role: 'helper',
+        userId: helper.id,
+        userName: helper.name,
+        phone: helper.phone,
+      });
+    } else {
       db.setSession({
         role: 'admin',
         userId: 'admin_ops_1',
