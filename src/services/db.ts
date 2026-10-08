@@ -490,6 +490,33 @@ export const db = {
     return booking;
   },
 
+  customerRespondToCounter(bookingId: string, customerId: string, action: 'accept' | 'counter' | 'cancel', counterPrice?: number): Booking | undefined {
+    const booking = state.bookings.find((b) => b.id === bookingId);
+    if (!booking || booking.customerId !== customerId || booking.priceNegotiationStatus !== 'countered') return undefined;
+    if (action === 'accept') {
+      if (!booking.helperCounterPrice) return undefined;
+      booking.negotiatedAgreedPrice = booking.helperCounterPrice;
+      booking.pricing.baseAmount = booking.helperCounterPrice;
+      booking.pricing.subtotal = booking.helperCounterPrice;
+      booking.pricing.totalAmount = booking.helperCounterPrice;
+      booking.pricing.helperPayout = booking.helperCounterPrice;
+      booking.priceNegotiationStatus = 'accepted';
+      booking.status = 'helper_assigned';
+    } else if (action === 'counter') {
+      if (!counterPrice || counterPrice <= 0) return undefined;
+      booking.customerOfferPrice = counterPrice;
+      booking.helperCounterPrice = undefined;
+      booking.priceNegotiationStatus = 'pending_helper';
+      booking.status = 'requested';
+    } else {
+      booking.priceNegotiationStatus = 'declined';
+      booking.status = 'cancelled';
+      booking.timestamps.cancelledAt = new Date().toISOString();
+    }
+    saveState();
+    return booking;
+  },
+
   acceptCustomerCounter(bookingId: string): Booking | undefined {
     const booking = state.bookings.find((b) => b.id === bookingId);
     if (!booking || booking.priceNegotiationStatus !== 'countered' || !booking.helperCounterPrice) return undefined;
