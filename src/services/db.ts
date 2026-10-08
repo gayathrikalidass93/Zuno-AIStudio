@@ -351,7 +351,8 @@ export const db = {
     cust.preferredLanguage = language;
     saveState();
   },
-\n  toggleFavouriteHelper(customerId: string, helperId: string): boolean {
+
+  toggleFavouriteHelper(customerId: string, helperId: string): boolean {
     const cust = state.customers.find((c) => c.id === customerId);
     if (!cust) return false;
     const isFav = cust.favouriteHelperIds.includes(helperId);
