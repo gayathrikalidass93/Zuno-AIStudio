@@ -26,8 +26,8 @@ import { matchHelpers } from './matching';
 
 // Fresh clean datastore: old demo/localStorage records are intentionally orphaned.
 // Identity must never be reconstructed from legacy persisted helper records.
-const STORAGE_KEY = 'zuno_marketplace_data_v5_fresh';
-const SESSION_STORAGE_KEY = 'zuno_active_session_v5_fresh';
+const STORAGE_KEY = 'zuno_marketplace_data_v6_helper_identity';
+const SESSION_STORAGE_KEY = 'zuno_active_session_v6_helper_identity';
 
 let currentSession: AuthSession | null = null;
 try {
@@ -136,12 +136,23 @@ function loadState(): MarketplaceState {
             });
           });
 
-          parsed.helpers = Array.from(helperById.values()).map((h: any) => {
-            const init = INITIAL_HELPERS.find((ih) => ih.id === h.id);
+          // The seed helper list is the canonical identity registry.
+          // Keep only known helper IDs; stale/unknown helper records must never
+          // become authentication targets or helper profiles.
+          parsed.helpers = INITIAL_HELPERS.map((init) => {
+            const existing = helperById.get(init.id);
             return {
-              ...h,
-              hourlyRate: h.hourlyRate || init?.hourlyRate || 249,
-              categoryRates: h.categoryRates || init?.categoryRates || { cleaning: 219, cooking: 249, laundry: 199 },
+              ...init,
+              ...(existing
+                ? {
+                    availabilityStatus: existing.availabilityStatus ?? init.availabilityStatus,
+                    isActive: existing.isActive ?? init.isActive,
+                    verificationStatus: existing.verificationStatus ?? init.verificationStatus,
+                    hourlyRate: existing.hourlyRate ?? init.hourlyRate,
+                    hourlyPayout: existing.hourlyPayout ?? init.hourlyPayout,
+                    categoryRates: existing.categoryRates ?? init.categoryRates,
+                  }
+                : {}),
             };
           });
           parsed.privacyConsents = parsed.privacyConsents || INITIAL_PRIVACY_CONSENTS;
