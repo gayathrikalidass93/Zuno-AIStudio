@@ -74,7 +74,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState<string>(
     'Sudden family health emergency'
-  );
+        </div>
   const [cancellationSubmittedNotice, setCancellationSubmittedNotice] = useState<string | null>(null);
 
   // Rate customer modal state
@@ -156,7 +156,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
           <span className="text-stone-500">
             {lang === 'ta' ? 'உதவிக் கூட்டாளி போர்டல்' : 'Helper Portal'}
           </span>
-        </div>
+  );
 
         <div className="flex items-center gap-2">
           {/* Helper profile switcher (For easy testing of multiple helpers) */}
