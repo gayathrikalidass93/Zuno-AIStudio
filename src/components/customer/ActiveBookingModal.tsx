@@ -224,7 +224,7 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
           {/* ============================================================== */}
           {/* REPLACEMENT ENGINE NOTIFICATION CARD (If helper cancelled) */}
           {/* ============================================================== */}
-          {booking.status === 'replacement_required' && booking.priceNegotiationStatus === 'declined' && (
+          {booking.priceNegotiationStatus === 'declined' && (
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3">
               <div>
                 <div className="text-sm font-bold text-amber-900">
