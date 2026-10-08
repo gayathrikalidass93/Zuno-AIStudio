@@ -974,6 +974,5 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
           </div>
         </div>
       )}
-    </div>
   );
 };
