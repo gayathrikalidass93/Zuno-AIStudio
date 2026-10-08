@@ -411,6 +411,20 @@ export const db = {
 
   // Booking Flow
   createBooking(bookingData: Omit<Booking, 'id' | 'bookingCode' | 'startOtp' | 'timestamps'>): Booking {
+    if (!state.customers.some((c) => c.id === bookingData.customerId)) {
+      throw new Error('Customer account does not exist.');
+    }
+    if (bookingData.helperId && !state.helpers.some((h) => h.id === bookingData.helperId && h.isActive)) {
+      throw new Error('Selected helper is not available.');
+    }
+    const [y,m,day] = bookingData.scheduledDate.split('-').map(Number);
+    const requestedDate = new Date(y, m - 1, day);
+    const now = new Date();
+    const minimum = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (now.getHours() >= 23) minimum.setDate(minimum.getDate() + 1);
+    if (requestedDate < minimum) {
+      throw new Error('Please choose a future work date.');
+    }
     const count = state.bookings.length + 1;
     const bookingCode = `ZUNO-${2600 + count}`;
     const id = `bk_${Date.now()}`;
