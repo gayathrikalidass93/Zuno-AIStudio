@@ -261,7 +261,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 Negotiate
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">Your offer will be sent to the helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>}
+            <p className="mt-2 text-xs text-stone-500">Your offer will be sent to the helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
