@@ -41,7 +41,6 @@ interface HelperPortalProps {
   onUpdateBookingStatus: (bookingId: string, status: Booking['status']) => void;
   onCancelWithEmergency: (bookingId: string, reason: string) => void;
   onRateCustomer: (bookingId: string, rating: number, feedback?: string) => void;
-  onPriceResponse: (bookingId: string, action: 'accept' | 'counter' | 'decline', counterPrice?: number) => void;
   onOpenAuth?: () => void;
 }
 
@@ -56,7 +55,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   onUpdateBookingStatus,
   onCancelWithEmergency,
   onRateCustomer,
-  onPriceResponse,
   onOpenAuth,
 }) => {
   // Language toggle: 'en' | 'ta' (Tamil bilingual UI)
@@ -80,8 +78,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   // Rate customer modal state
   const [ratingCustomerBookingId, setRatingCustomerBookingId] = useState<string | null>(null);
   const [customerRating, setCustomerRating] = useState<number>(5);
-  const [counterPrice, setCounterPrice] = useState<string>('');
-  const [priceNotice, setPriceNotice] = useState<string | null>(null);
   const [counterPrice, setCounterPrice] = useState<string>('');
   const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
@@ -437,28 +433,6 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for Gayathri to respond.</div>
           )}
           {priceNotice && <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">{priceNotice}</div>}
-        </div>
-      )}
-
-      {primaryBooking?.priceNegotiationStatus && (
-        <div className="p-4 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="font-bold text-stone-900">Price negotiation</div>
-            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-900">{primaryBooking.priceNegotiationStatus}</span>
-          </div>
-          <div className="text-xs text-stone-600">Customer offer: <b>₹{primaryBooking.customerOfferPrice ?? primaryBooking.negotiatedAgreedPrice ?? primaryBooking.pricing.totalAmount}</b></div>
-          {primaryBooking.priceNegotiationStatus === 'pending_helper' && (
-            <>
-              <input type="number" min="1" value={counterPrice} onChange={(e) => setCounterPrice(e.target.value)} placeholder="Counter price ₹" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs" />
-              <div className="grid grid-cols-3 gap-2">
-                <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'accept'); setPriceNotice('Offer accepted.'); }} className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Accept</button>
-                <button type="button" onClick={() => { const n = Number(counterPrice); if (n > 0) { onPriceResponse(primaryBooking.id, 'counter', n); setPriceNotice('Counter offer sent.'); } }} className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">Counter</button>
-                <button type="button" onClick={() => { onPriceResponse(primaryBooking.id, 'decline'); setPriceNotice('Offer declined.'); }} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Decline</button>
-              </div>
-            </>
-          )}
-          {primaryBooking.priceNegotiationStatus === 'countered' && <div className="text-xs text-amber-900">Your counter: <b>₹{primaryBooking.helperCounterPrice}</b>. Waiting for customer.</div>}
-          {priceNotice && <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">{priceNotice}</div>}
         </div>
       )}
 
