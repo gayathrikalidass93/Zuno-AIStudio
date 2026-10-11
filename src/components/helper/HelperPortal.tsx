@@ -49,7 +49,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const helperBookings = useMemo(
     () => bookings.filter(
       (booking) =>
-        booking.helperId === helper.id &&
+        (booking.helperId === helper.id ||
+          (!booking.helperId && (booking.candidateHelperIds || []).includes(helper.id))) &&
         !(booking.priceNegotiationStatus === 'declined' && booking.status === 'requested')
     ),
     [bookings, helper.id]
@@ -106,7 +107,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
     }
     onPriceResponse?.(booking.id, action);
     if (action === 'accept') {
-      setNotice('Offer accepted. Waiting for the customer to proceed.');
+      setNotice('Booking accepted and assigned to you. It is no longer available to other helpers.');
     } else {
       setNotice('Offer declined.');
     }
@@ -257,15 +258,17 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
                   {booking.priceNegotiationStatus === 'pending_helper' && (
                     <div className="mt-2 space-y-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={counterPrice}
-                        onChange={(event) => setCounterPrice(event.target.value)}
-                        placeholder="Counter price ₹"
-                        className="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-xs"
-                      />
-                      <div className="grid grid-cols-3 gap-2">
+                      {booking.helperId === helper.id && (
+                        <input
+                          type="number"
+                          min="1"
+                          value={counterPrice}
+                          onChange={(event) => setCounterPrice(event.target.value)}
+                          placeholder="Counter price ₹"
+                          className="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-xs"
+                        />
+                      )}
+                      <div className={`grid ${booking.helperId === helper.id ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                         <button
                           type="button"
                           onClick={() => respondToOffer('accept')}
@@ -273,13 +276,15 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                         >
                           Accept
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => respondToOffer('counter')}
-                          className="p-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
-                        >
-                          Counter
-                        </button>
+                        {booking.helperId === helper.id && (
+                          <button
+                            type="button"
+                            onClick={() => respondToOffer('counter')}
+                            className="p-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
+                          >
+                            Counter
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => respondToOffer('decline')}
