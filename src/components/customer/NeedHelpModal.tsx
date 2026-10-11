@@ -81,9 +81,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     service === 'organisation' ? 'organise_home' : 'family_help'
   );
 
-  // Automatically assign the highest-ranked verified helper who is currently
-  // available and eligible for the requested services. Customers do not choose helpers.
-  const selectedHelper = useMemo(() => {
+  // Notify every ranked helper who is eligible and available. The first one to
+  // accept will be assigned by the datastore; the rest will lose access to the request.
+  const eligibleHelpers = useMemo(() => {
     const matches = matchHelpers(helpers, {
       selectedTaskIds,
       locality,
@@ -91,11 +91,14 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       isUrgent: false,
       customer,
     });
-    return matches.find((match) =>
-      match.isEligible &&
-      ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
-    )?.helper;
+    return matches
+      .filter((match) =>
+        match.isEligible &&
+        ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
+      )
+      .map((match) => match.helper);
   }, [helpers, selectedCategories, locality, apartmentName, customer]);
+  const selectedHelper = eligibleHelpers[0];
 
   const workDescription = selectedCategories.map((service) => {
     if (service === 'cleaning') return `Brooming / Mopping: ${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
@@ -110,7 +113,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
     onConfirmBooking({
       customerId: customer.id,
-      helperId: selectedHelper?.id,
+      helperId: undefined,
+      candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
       bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
@@ -210,7 +214,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
-          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll check for the most suitable available helper and notify you.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
+          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll send your request to all suitable available helpers. The first to accept will be assigned.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
             <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
             <div>{workDescription}</div>
@@ -231,7 +235,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                   setAgreedPrice(n);
                   onConfirmBooking({
                     customerId: customer.id,
-                    helperId: selectedHelper?.id,
+                    helperId: undefined,
+                    candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
                     bookingMode: 'let_zuno_choose',
                     bookingType: 'casual',
                     status: 'requested',
@@ -273,7 +278,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 {selectedHelper ? 'Send Offer' : 'Send Request'}
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while the helper responds to your offer.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
+            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while eligible helpers respond. The first acceptance wins.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
