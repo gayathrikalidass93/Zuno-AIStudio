@@ -627,7 +627,7 @@ export const ActiveBookingModal: React.FC<ActiveBookingModalProps> = ({
           {/* ============================================================== */}
           {/* HELPER PROFILE CARD */}
           {/* ============================================================== */}
-          {helper && (
+          {helper && (!booking.priceNegotiationStatus || booking.priceNegotiationStatus === 'accepted') && (
             <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-xs flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-700 font-bold text-base flex items-center justify-center font-display">
