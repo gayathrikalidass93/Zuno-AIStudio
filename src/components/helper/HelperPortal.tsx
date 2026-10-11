@@ -235,8 +235,22 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-600 mt-1">Booking {item.bookingCode} · {item.scheduledDate}</div>
-                    {item.workScope && 'bathrooms' in item.workScope && (
-                      <div className="text-[11px] text-stone-600 mt-1">Bathrooms: {item.workScope.bathrooms}</div>
+                    {item.workScopeBreakdown?.homeCleaning?.broomingMopping && (
+                      <div className="text-[11px] text-stone-700 mt-1">
+                        🧹 Brooming & Mopping: {item.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · {item.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · {item.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls
+                        {item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}
+                      </div>
+                    )}
+                    {(item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms) != null && (
+                      <div className="text-[11px] text-cyan-800 mt-1">
+                        🚿 Bathrooms: {item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms}
+                        {item.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${item.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}
+                      </div>
+                    )}
+                    {!item.workScopeBreakdown?.homeCleaning?.broomingMopping && item.workScope && (item.workScope.bedrooms != null || item.workScope.halls != null || item.workScope.kitchens != null) && (
+                      <div className="text-[11px] text-stone-700 mt-1">
+                        🧹 Brooming & Mopping: {item.workScope.bedrooms ?? 0} bedrooms · {item.workScope.kitchens ?? 0} kitchens · {item.workScope.halls ?? 0} halls
+                      </div>
                     )}
                   </button>
                 );
