@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Customer, Helper, PricingConfig, ServiceCategory } from '../../types';
-import { db } from '../../services/db';
-import { ChevronLeft, ChevronRight, Check, X, MapPin, CalendarDays, ShieldCheck } from 'lucide-react';
+import { matchHelpers } from '../../services/matching';
+import { ChevronLeft, ChevronRight, Check, X, MapPin, CalendarDays } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -41,7 +41,6 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [kitchens, setKitchens] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
   const [cleaningType, setCleaningType] = useState<'casual'|'regular'>('regular');
-  const [helperId, setHelperId] = useState(initialHelperId || '');
   const [offer, setOffer] = useState('');
   const [counter, setCounter] = useState(0);
   const [agreedPrice, setAgreedPrice] = useState(0);
@@ -57,7 +56,6 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setWorkDate(getMinWorkDate());
     setCategory(preselectedCategory || 'cleaning');
     setSelectedCategories(preselectedCategory ? [preselectedCategory] : ['cleaning']);
-    setHelperId(initialHelperId || '');
     setOffer('');
     setCounter(0);
     setAgreedPrice(0);
@@ -75,16 +73,29 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
   const suggestedPrice = useMemo(() => selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms]);
 
-  const eligibleHelpers = useMemo(() => {
-    const sameArea = helpers.filter(h => h.isActive && (
-      h.locality?.toLowerCase() === locality.toLowerCase() ||
-      h.preferredLocalities?.some(l => l.toLowerCase() === locality.toLowerCase()) ||
-      h.apartmentsServed?.some(a => a.toLowerCase() === apartmentName.toLowerCase())
-    ));
-    return sameArea.length ? sameArea : helpers.filter(h => h.isActive);
-  }, [helpers, locality, apartmentName]);
+  const selectedTaskIds = selectedCategories.map((service) =>
+    service === 'cleaning' ? 'clean_sweep' :
+    service === 'bathroom_cleaning' ? 'bath_clean' :
+    service === 'cooking' ? 'cook_home' :
+    service === 'laundry' ? 'laundry_home' :
+    service === 'organisation' ? 'organise_home' : 'family_help'
+  );
 
-  const selectedHelper = helpers.find(h => h.id === helperId);
+  // Automatically assign the highest-ranked verified helper who is currently
+  // available and eligible for the requested services. Customers do not choose helpers.
+  const selectedHelper = useMemo(() => {
+    const matches = matchHelpers(helpers, {
+      selectedTaskIds,
+      locality,
+      apartmentName,
+      isUrgent: false,
+      customer,
+    });
+    return matches.find((match) =>
+      match.isEligible &&
+      ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
+    )?.helper;
+  }, [helpers, selectedCategories, locality, apartmentName, customer]);
 
   const workDescription = selectedCategories.map((service) => {
     if (service === 'cleaning') return `Brooming / Mopping: ${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
@@ -101,7 +112,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     onConfirmBooking({
       customerId: customer.id,
       helperId: selectedHelper.id,
-      bookingMode: 'choose_helper',
+      bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
       category,
@@ -143,7 +154,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   return <div className="fixed inset-0 z-50 bg-black/40 p-3 sm:p-6 flex items-end sm:items-center justify-center">
     <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
       <div className="sticky top-0 z-10 bg-white border-b border-stone-200 p-4 flex items-center justify-between">
-        <div><div className="font-black text-lg">Need Help</div><div className="text-xs text-stone-500">Step {step} of 7 · Work-specific booking</div></div>
+        <div><div className="font-black text-lg">Need Help</div><div className="text-xs text-stone-500">Step {step} of 5 · Work-specific booking</div></div>
         <button onClick={onClose}><X className="w-5 h-5"/></button>
       </div>
 
@@ -195,20 +206,12 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} onClick={()=>setCleaningType(t)} className={`p-3 rounded-xl border font-bold text-sm ${cleaningType===t?'border-orange-500 bg-orange-50':''}`}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
           </div>}
           {!['cleaning','bathroom_cleaning'].includes(category) && <div className="p-4 rounded-2xl bg-stone-50 text-sm">Tell the helper the exact work for <b>{services.find(s=>s.id===category)?.name}</b> in the notes on the review step.</div>}
-          <button onClick={()=>setStep(5)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Find matching helpers <ChevronRight className="inline w-4 h-4"/></button>
+          <button onClick={()=>setStep(5)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Continue to price <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
-        {step === 5 && <div className="space-y-3">
-          <div className="flex items-center justify-between"><h2 className="font-black text-xl">Matching helpers</h2><span className="text-xs font-bold text-emerald-700">{eligibleHelpers.length} found</span></div>
-          {eligibleHelpers.map(h=><button key={h.id} onClick={()=>setHelperId(h.id)} className={`w-full text-left p-4 rounded-2xl border ${helperId===h.id?'border-orange-500 bg-orange-50':'border-stone-200'}`}>
-            <div className="flex items-center justify-between"><div><div className="font-bold">{h.name}</div><div className="text-xs text-stone-500">{h.locality} · {h.experienceYears} yrs experience</div></div><div className="text-sm font-bold">★ {h.rating}</div></div>
-            <div className="mt-2 text-xs text-emerald-700"><ShieldCheck className="inline w-3.5 h-3.5"/> Verified helper</div>
-          </button>)}
-          {helperId && <button onClick={()=>setStep(6)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Review <ChevronRight className="inline w-4 h-4"/></button>}
-        </div>}
-
-        {step === 6 && selectedHelper && <div className="space-y-4">
+        {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">{selectedHelper ? `ZUNO will send your offer to an available verified helper (${selectedHelper.locality}).` : "No eligible helper is available for these services in this area right now. Please try another locality or come back later."}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
             <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
             <div>{workDescription}</div>
@@ -234,7 +237,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     bookingType: 'casual',
                     status: 'requested',
                     category,
-                    tasks: selectedCategories.map((service) => service === 'cleaning' ? 'clean_sweep' : service === 'bathroom_cleaning' ? 'bath_clean' : service === 'cooking' ? 'cook_home' : service === 'laundry' ? 'laundry_home' : service === 'organisation' ? 'organise_home' : 'family_help'),
+                    tasks: selectedTaskIds,
                     scheduledDate: workDate,
                     scheduledSlot: 'Work-specific booking',
                     durationHours: 1,
@@ -271,7 +274,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 Negotiate
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">Your offer will be sent to the helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>
+            <p className="mt-2 text-xs text-stone-500">Your offer will be sent automatically to the best-matched available helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
