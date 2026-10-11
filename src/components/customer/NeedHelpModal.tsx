@@ -211,7 +211,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">{selectedHelper ? `ZUNO will send your offer to an available verified helper (${selectedHelper.locality}).` : "No eligible helper is available for these services in this area right now. Please try another locality or come back later."}</div>
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">{selectedHelper ? `We’ll check for the most suitable available helper and notify you.` : "No eligible helper is available for these services in this area right now. Please try another locality or come back later."}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
             <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
             <div>{workDescription}</div>
@@ -274,7 +274,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 Negotiate
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">Your offer will be sent automatically to the best-matched available helper. This popup will close and the booking will show <b>Pending from Helper</b>.</p>
+            <p className="mt-2 text-xs text-stone-500">ZUNO will check for the most suitable available helper and notify you. This popup will close and your booking will show <b>Pending from Helper</b>.</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
@@ -282,7 +282,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 7 && <div className="space-y-5">
           <div className="text-center"><div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><Check className="w-7 h-7"/></div><h2 className="font-black text-xl mt-3">Ready to confirm</h2></div>
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm"><b>₹{agreedPrice} offer sent to {selectedHelper?.name}.</b><br/>We'll check with the helper and update you. Payment is not taken now; Razorpay payment will be collected after the helper reaches your home or after the work is completed.</div>
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm"><b>₹{agreedPrice} offer submitted.</b><br/>ZUNO will check for the most suitable available helper and notify you. Payment is not taken now; Razorpay payment will be collected after the helper reaches your home or after the work is completed.</div>
           <button onClick={buildBooking} className="w-full p-4 rounded-2xl bg-orange-600 text-white font-black">Send offer · Pay later</button>
           <button onClick={()=>setStep(6)} className="w-full p-3 rounded-xl border font-bold">Back</button>
         </div>}
