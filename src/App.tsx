@@ -40,6 +40,7 @@ export default function App() {
 
   const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false);
   const [activeBookingModalId, setActiveBookingModalId] = useState<string | null>(null);
+  const [lastCreatedBookingId, setLastCreatedBookingId] = useState<string | null>(null);
   const [supportModalBookingId, setSupportModalBookingId] = useState<string | null>(null);
 
   const activeCustomer = db.getActiveCustomer();
@@ -90,6 +91,7 @@ export default function App() {
     const created = db.createBooking(newBookingData);
     // Creating a customer booking must NEVER change the authenticated session
     // to the selected helper. The booking.helperId is the only relationship.
+    setLastCreatedBookingId(created.id);
     setActiveBookingModalId(created.id);
   };
 
@@ -183,6 +185,7 @@ export default function App() {
             customer={activeCustomer}
             helpers={state.helpers}
             bookings={state.bookings}
+            lastCreatedBookingId={lastCreatedBookingId}
             onOpenNeedHelp={(category) => handleOpenNeedHelp('casual', category)}
             onBookAgain={handleBookAgain}
             onViewBookingDetails={(id) => setActiveBookingModalId(id)}
