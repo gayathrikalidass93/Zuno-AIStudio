@@ -231,6 +231,7 @@ export default function App() {
             onUpdatePrivacyRequest={(id, status, res) => db.updatePrivacyRequestStatus(id, status, res)}
             onImportHelpers={(newH) => db.importHelpers(newH)}
             onImportApartments={(newA) => db.importApartments(newA)}
+            onAdminReassignBooking={(bookingId, helperId) => db.adminReassignBooking(bookingId, helperId)}
           />
         )}
       </main>
