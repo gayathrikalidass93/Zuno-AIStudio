@@ -233,7 +233,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                   onConfirmBooking({
                     customerId: customer.id,
                     helperId: selectedHelper.id,
-                    bookingMode: 'choose_helper',
+                    bookingMode: 'let_zuno_choose',
                     bookingType: 'casual',
                     status: 'requested',
                     category,
