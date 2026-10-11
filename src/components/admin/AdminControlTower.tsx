@@ -894,7 +894,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                               <div className="space-y-1 text-[11px]">
                                 {b.workScopeBreakdown.homeCleaning && (
                                   <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
-                                    🧹 Home: {b.workScopeBreakdown.homeCleaning.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms}B/${b.workScopeBreakdown.homeCleaning.broomingMopping.halls}H` : 'Chores'}
+                                    🧹 Brooming & Mopping: {b.workScopeBreakdown.homeCleaning.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · ${b.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · ${b.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}` : 'Other home chores'}
                                   </div>
                                 )}
                                 {b.workScopeBreakdown.bathroomCleaning && (
