@@ -149,6 +149,8 @@ export interface Booking {
   helperId?: string;
   /** Eligible helpers notified before one accepts the request. Cleared on assignment. */
   candidateHelperIds?: string[];
+  /** Full history of helpers originally notified, retained after assignment or cancellation. */
+  notifiedHelperIds?: string[];
   status: BookingStatus;
   tasks: string[]; // Task IDs
   category?: ServiceCategory; // e.g. "cleaning"
