@@ -147,6 +147,8 @@ export interface Booking {
   bookingCode: string;
   customerId: string;
   helperId?: string;
+  /** Eligible helpers notified before one accepts the request. Cleared on assignment. */
+  candidateHelperIds?: string[];
   status: BookingStatus;
   tasks: string[]; // Task IDs
   category?: ServiceCategory; // e.g. "cleaning"
