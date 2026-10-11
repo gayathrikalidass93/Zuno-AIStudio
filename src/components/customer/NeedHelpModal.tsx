@@ -104,14 +104,13 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   }).join(' + ');
 
   const buildBooking = () => {
-    if (!selectedHelper) return;
     if (workDate < getMinWorkDate()) { setStep(2); return; }
     const finalPrice = agreedPrice || counter || Number(offer) || suggestedPrice;
     const taskIds = selectedCategories.map((service) => service === 'cleaning' ? 'clean_sweep' : service === 'bathroom_cleaning' ? 'bath_clean' : service === 'cooking' ? 'cook_home' : service === 'laundry' ? 'laundry_home' : service === 'organisation' ? 'organise_home' : 'family_help');
 
     onConfirmBooking({
       customerId: customer.id,
-      helperId: selectedHelper.id,
+      helperId: selectedHelper?.id,
       bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
@@ -133,7 +132,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       priceNegotiationStatus: 'pending_helper',
       paymentStatus: 'pay_after_arrival_or_completion',
       pricing: {
-        baseHourlyRate: selectedHelper.hourlyRate,
+        baseHourlyRate: selectedHelper?.hourlyRate ?? 0,
         durationHours: 1,
         baseAmount: finalPrice,
         taskComplexityAdjustment: 0,
@@ -211,7 +210,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">{selectedHelper ? `We’ll check for the most suitable available helper and notify you.` : "No eligible helper is available for these services in this area right now. Please try another locality or come back later."}</div>
+          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll check for the most suitable available helper and notify you.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
             <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
             <div>{workDescription}</div>
@@ -225,14 +224,14 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             <div className="mt-3 flex gap-2">
               <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
               <button
-                disabled={!selectedHelper || Number(offer) <= 0}
+                disabled={Number(offer) <= 0}
                 onClick={() => {
                   const n = Number(offer);
-                  if (!selectedHelper || n <= 0) return;
+                  if (n <= 0) return;
                   setAgreedPrice(n);
                   onConfirmBooking({
                     customerId: customer.id,
-                    helperId: selectedHelper.id,
+                    helperId: selectedHelper?.id,
                     bookingMode: 'let_zuno_choose',
                     bookingType: 'casual',
                     status: 'requested',
@@ -254,7 +253,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     priceNegotiationStatus: 'pending_helper',
                     paymentStatus: 'pay_after_arrival_or_completion',
                     pricing: {
-                      baseHourlyRate: selectedHelper.hourlyRate,
+                      baseHourlyRate: selectedHelper?.hourlyRate ?? 0,
                       durationHours: 1,
                       baseAmount: n,
                       taskComplexityAdjustment: 0,
@@ -271,10 +270,10 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 }}
                 className="px-4 rounded-xl bg-stone-900 text-white font-bold disabled:opacity-40"
               >
-                Negotiate
+                {selectedHelper ? 'Send Offer' : 'Send Request'}
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">ZUNO will check for the most suitable available helper and notify you. This popup will close and your booking will show <b>Pending from Helper</b>.</p>
+            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while the helper responds to your offer.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
