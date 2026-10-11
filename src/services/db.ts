@@ -191,6 +191,34 @@ function loadState(): MarketplaceState {
 let state: MarketplaceState = loadState();
 const listeners = new Set<() => void>();
 
+// Keep other open ZUNO tabs (especially the Admin Control Tower) in sync with
+// bookings created or updated in another tab. Merge booking/audit records by ID
+// so a refresh never drops older history just because another tab is stale.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY || !event.newValue) return;
+    try {
+      const incoming = JSON.parse(event.newValue) as MarketplaceState;
+      if (!incoming || !Array.isArray(incoming.bookings)) return;
+      const mergeById = <T extends { id: string }>(local: T[] = [], remote: T[] = []) => {
+        const merged = new Map<string, T>();
+        local.forEach((item) => merged.set(item.id, item));
+        remote.forEach((item) => merged.set(item.id, item));
+        return Array.from(merged.values());
+      };
+      state = {
+        ...state,
+        ...incoming,
+        bookings: mergeById(state.bookings, incoming.bookings),
+        auditLogs: mergeById(state.auditLogs, incoming.auditLogs),
+      };
+      listeners.forEach((listener) => listener());
+    } catch {
+      // Ignore malformed cross-tab storage events; keep current state intact.
+    }
+  });
+}
+
 function saveState() {
   try {
     if (typeof localStorage !== 'undefined') {
@@ -216,14 +244,17 @@ export const db = {
   },
 
   resetToDemoData() {
+    // Demo reset may reset reference data, but must never erase booking/audit history.
+    const preservedBookings = state.bookings;
+    const preservedAuditLogs = state.auditLogs;
     state = {
       helpers: JSON.parse(JSON.stringify(INITIAL_HELPERS)),
       customers: JSON.parse(JSON.stringify(INITIAL_CUSTOMERS)),
       apartments: JSON.parse(JSON.stringify(INITIAL_APARTMENTS)),
-      bookings: [],
+      bookings: preservedBookings,
       pricingConfig: JSON.parse(JSON.stringify(INITIAL_PRICING_CONFIG)),
       supportTickets: [],
-      auditLogs: [],
+      auditLogs: preservedAuditLogs,
       supplyDemand: JSON.parse(JSON.stringify(INITIAL_LOCALITY_SUPPLY_DEMAND)),
       privacyConsents: [],
       privacyRequests: [],
