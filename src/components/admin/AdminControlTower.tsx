@@ -61,6 +61,7 @@ interface AdminControlTowerProps {
   onUpdatePrivacyRequest?: (id: string, status: PrivacyRequest['status'], resolutionNotes?: string) => void;
   onImportHelpers: (newHelpers: Helper[]) => void;
   onImportApartments: (newApartments: Apartment[]) => void;
+  onAdminReassignBooking: (bookingId: string, helperId: string) => boolean;
 }
 
 export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
@@ -80,6 +81,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
   onUpdatePrivacyRequest,
   onImportHelpers,
   onImportApartments,
+  onAdminReassignBooking,
 }) => {
   const [activeTab, setActiveTab] = useState<
     | 'dashboard'
@@ -98,6 +100,8 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [replacementSelections, setReplacementSelections] = useState<Record<string, string>>({});
+  const [reassignmentNotice, setReassignmentNotice] = useState<string | null>(null);
 
   // Pricing Form State
   const [tempPricing, setTempPricing] = useState<PricingConfig>(pricingConfig);
@@ -694,6 +698,13 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
             </div>
           </div>
 
+          {reassignmentNotice && (
+            <div className="p-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-900 flex items-center justify-between gap-3">
+              <span>{reassignmentNotice}</span>
+              <button type="button" onClick={() => setReassignmentNotice(null)} className="font-bold">Dismiss</button>
+            </div>
+          )}
+
           {/* Bookings Table */}
           <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
@@ -707,6 +718,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     <th className="p-3">Tasks / Duration</th>
                     <th className="p-3">Start OTP</th>
                     <th className="p-3">Bill / Payout</th>
+                    <th className="p-3">Admin Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -801,6 +813,40 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             <div className="text-[10px] text-stone-500">
                               Payout: ₹{b.pricing.helperPayout}
                             </div>
+                          </td>
+                          <td className="p-3 min-w-52 space-y-2">
+                            {['started', 'completed', 'cancelled'].includes(b.status) ? (
+                              <span className="text-[10px] text-stone-400">Reassignment locked for this status</span>
+                            ) : (
+                              <>
+                                <select
+                                  value={replacementSelections[b.id] || ''}
+                                  onChange={(e) => setReplacementSelections((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                                  className="w-full p-2 rounded-lg border border-stone-200 bg-white text-[11px]"
+                                >
+                                  <option value="">Choose verified helper…</option>
+                                  {helpers.filter((h) => h.id !== b.helperId && h.isActive && h.verificationStatus === 'verified').map((h) => (
+                                    <option key={h.id} value={h.id}>{h.name} · {h.locality} · ₹{h.hourlyRate}/hr</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  disabled={!replacementSelections[b.id]}
+                                  onClick={() => {
+                                    const selected = helpers.find((h) => h.id === replacementSelections[b.id]);
+                                    if (!selected) return;
+                                    const confirmed = window.confirm(`Reassign ${b.bookingCode} to ${selected.name}? The booking will return to pending helper acceptance.`);
+                                    if (!confirmed) return;
+                                    const success = onAdminReassignBooking(b.id, selected.id);
+                                    setReassignmentNotice(success ? `${b.bookingCode} reassigned to ${selected.name}; fresh helper acceptance is required.` : `Could not reassign ${b.bookingCode}. Check booking status and helper eligibility.`);
+                                    if (success) setReplacementSelections((prev) => ({ ...prev, [b.id]: '' }));
+                                  }}
+                                  className="w-full px-2.5 py-2 rounded-lg bg-orange-600 text-white font-bold text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  Change Helper
+                                </button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       );
