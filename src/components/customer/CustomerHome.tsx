@@ -43,8 +43,8 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
   // Keep unassigned requests and price negotiation responses visible in Pending.
-  const pending = myBookings.filter(b => b.status === 'requested' || ['pending_helper','countered'].includes(b.priceNegotiationStatus || ''));
-  const upcoming = myBookings.filter(b => b.priceNegotiationStatus === 'declined' || ['confirmed','helper_assigned','replacement_required'].includes(b.status));
+  const pending = myBookings.filter(b => b.status !== 'cancelled' && (b.status === 'requested' || ['pending_helper','countered'].includes(b.priceNegotiationStatus || '')));
+  const upcoming = myBookings.filter(b => b.status !== 'cancelled' && (b.priceNegotiationStatus === 'declined' || ['confirmed','helper_assigned','replacement_required'].includes(b.status)));
   const active = myBookings.filter(b => ['on_the_way','started'].includes(b.status));
   const history = myBookings.filter(b => ['completed','cancelled'].includes(b.status));
 
