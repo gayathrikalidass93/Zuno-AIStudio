@@ -27,7 +27,7 @@ const SERVICES = [
 
 export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, lastCreatedBookingId, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onLogout }) => {
   const [tab, setTab] = useState<'home'|'bookings'|'profile'>('home');
-  const [bookingTab, setBookingTab] = useState<'upcoming'|'active'|'history'>('upcoming');
+  const [bookingTab, setBookingTab] = useState<'pending'|'upcoming'|'active'|'history'>('pending');
   const [language, setLanguage] = useState(customer.preferredLanguage || 'English');
   const [counterInput, setCounterInput] = useState<string>('');
 
@@ -35,13 +35,14 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
   useEffect(() => {
     if (lastCreatedBookingId && bookings.some((booking) => booking.id === lastCreatedBookingId && booking.customerId === customer.id)) {
       setTab('bookings');
-      setBookingTab('upcoming');
+      setBookingTab('pending');
     }
   }, [lastCreatedBookingId, bookings, customer.id]);
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
-  // A declined price offer is still an open booking; never hide it because of its status.
-  const upcoming = myBookings.filter(b => b.priceNegotiationStatus === 'declined' || ['requested','confirmed','helper_assigned','replacement_required'].includes(b.status));
+  // Keep unassigned requests and price negotiation responses visible in Pending.
+  const pending = myBookings.filter(b => b.status === 'requested' || ['pending_helper','countered'].includes(b.priceNegotiationStatus || ''));
+  const upcoming = myBookings.filter(b => b.priceNegotiationStatus === 'declined' || ['confirmed','helper_assigned','replacement_required'].includes(b.status));
   const active = myBookings.filter(b => ['on_the_way','started'].includes(b.status));
   const history = myBookings.filter(b => ['completed','cancelled'].includes(b.status));
 
@@ -56,7 +57,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
     }
   };
 
-  const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
+  const list = bookingTab === 'pending' ? pending : bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
   const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper'
     ? (b.helperId ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : `Finding a helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} saved`)
     : b.priceNegotiationStatus === 'countered'
@@ -72,11 +73,12 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
       <header className="flex items-center justify-between">
         <div>
           <p className="text-sm text-stone-500">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'} 👋</p>
-          <h1 className="text-2xl font-black text-stone-900">What do you need help with?</h1>
+          <h1 className="text-2xl font-black text-stone-900">{tab === 'bookings' ? 'Your Bookings' : 'What do you need help with?'}</h1>
           <p className="text-sm text-stone-500 mt-1">{customer.apartmentName} · {customer.block} · Flat {customer.flat}</p>
         </div>
       </header>
 
+      {tab !== 'bookings' && <>
       <button onClick={onOpenNeedHelp} className="w-full rounded-2xl bg-orange-600 text-white p-4 text-left shadow-md hover:bg-orange-700">
         <div className="text-lg font-black">Need Help</div>
         <div className="text-sm text-orange-100">Choose your work, date, helper and negotiate the price.</div>
@@ -93,16 +95,17 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
           ))}
         </div>
       </section>
+      </>}
 
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-stone-800">Your Bookings</h2>
-          <button onClick={() => setTab('bookings')} className="text-xs font-bold text-orange-600">View all</button>
+          <button onClick={() => { setTab('bookings'); setBookingTab('pending'); }} className="text-xs font-bold text-orange-600">View all</button>
         </div>
         <div className="flex p-1 bg-stone-100 rounded-xl mb-3">
-          {(['upcoming','active','history'] as const).map(t => (
+          {(['pending','upcoming','active','history'] as const).map(t => (
             <button key={t} onClick={() => { setTab('bookings'); setBookingTab(t); }} className={`flex-1 py-2 rounded-lg text-xs font-bold ${bookingTab === t && tab === 'bookings' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500'}`}>
-              {t[0].toUpperCase()+t.slice(1)}
+              {t === 'pending' ? `Pending (${pending.length})` : t[0].toUpperCase()+t.slice(1)}
             </button>
           ))}
         </div>
@@ -149,7 +152,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
             )}
           </div>;
         })}
-        {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">No bookings in this section.</div>}
+        {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">{bookingTab === 'pending' ? 'No pending bookings yet. New requests will appear here while a helper responds.' : 'No bookings in this section.'}</div>}
       </section>
 
       {tab === 'profile' && (
@@ -167,7 +170,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
 
       <nav className="grid grid-cols-3 bg-white border border-stone-200 rounded-2xl p-1">
         {([['home','Home'],['bookings','Bookings'],['profile','Profile']] as const).map(([id,label]) =>
-          <button key={id} onClick={() => setTab(id)} className={`rounded-xl py-2.5 text-xs font-bold ${tab===id?'bg-stone-900 text-white':'text-stone-500'}`}>{label}</button>
+          <button key={id} onClick={() => { setTab(id); if (id === 'bookings') setBookingTab('pending'); }} className={`rounded-xl py-2.5 text-xs font-bold ${tab===id?'bg-stone-900 text-white':'text-stone-500'}`}>{label}</button>
         )}
       </nav>
     </div>
