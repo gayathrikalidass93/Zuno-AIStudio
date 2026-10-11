@@ -786,7 +786,14 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                 )}
                               </div>
                             ) : (
-                              <span className="text-stone-400 italic">Unassigned</span>
+                              <div className="space-y-1">
+                                <span className="text-stone-400 italic">Awaiting helper acceptance</span>
+                                {(b.candidateHelperIds || []).length > 0 && (
+                                  <div className="text-[10px] text-amber-700">
+                                    Sent to {(b.candidateHelperIds || []).length} eligible helper{(b.candidateHelperIds || []).length === 1 ? '' : 's'}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="p-3 min-w-44">
