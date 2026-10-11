@@ -776,7 +776,20 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                               <span className="text-stone-400 italic">Unassigned</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-3 min-w-56">
+                            <div className="space-y-1.5 mb-2">
+                              {b.tasks.map((taskId) => {
+                                const task = MASTER_TASKS.find((item) => item.id === taskId);
+                                return (
+                                  <div key={taskId} className="rounded-lg bg-stone-50 border border-stone-100 p-2">
+                                    <div className="font-semibold text-stone-800">{task?.name || taskId.replace(/_/g, ' ')}</div>
+                                    {task?.description && (
+                                      <div className="text-[10px] leading-relaxed text-stone-500 mt-0.5">{task.description}</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                             {b.workScopeBreakdown ? (
                               <div className="space-y-1 text-[11px]">
                                 {b.workScopeBreakdown.homeCleaning && (
