@@ -890,28 +890,26 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                 );
                               })}
                             </div>
-                            {b.workScopeBreakdown ? (
-                              <div className="space-y-1 text-[11px]">
-                                {b.workScopeBreakdown.homeCleaning && (
-                                  <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
-                                    🧹 Brooming & Mopping: {b.workScopeBreakdown.homeCleaning.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · ${b.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · ${b.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}` : 'Other home chores'}
-                                  </div>
-                                )}
-                                {b.workScopeBreakdown.bathroomCleaning && (
-                                  <div className="inline-block px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 font-semibold">
-                                    🚿 Bath: {b.workScopeBreakdown.bathroomCleaning.config.bathroomCount} Baths ({b.workScopeBreakdown.bathroomCleaning.config.cleaningType})
-                                  </div>
-                                )}
-                                <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="font-medium text-stone-800">
-                                  {b.tasks.length} tasks ({b.durationHours} hrs)
+                            <div className="space-y-1 text-[11px]">
+                              {(b.workScopeBreakdown?.homeCleaning?.broomingMopping || b.workScope?.bedrooms != null || b.workScope?.kitchens != null || b.workScope?.halls != null) && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
+                                  🧹 Brooming & Mopping: {b.workScopeBreakdown?.homeCleaning?.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · ${b.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · ${b.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}` : `${b.workScope?.bedrooms ?? 0} bedrooms · ${b.workScope?.kitchens ?? 0} kitchens · ${b.workScope?.halls ?? 0} halls`}
                                 </div>
-                                <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
-                              </div>
-                            )}
+                              )}
+                              {(b.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? b.workScope?.bathrooms) != null && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 font-semibold">
+                                  🚿 Bathrooms: {b.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? b.workScope?.bathrooms}
+                                  {b.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${b.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}
+                                </div>
+                              )}
+                              {b.workScopeBreakdown?.homeCleaning && !b.workScopeBreakdown.homeCleaning.broomingMopping && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
+                                  Home Cleaning: Other home chores
+                                </div>
+                              )}
+                              <div className="font-medium text-stone-800">{b.tasks.length} tasks ({b.durationHours} hrs)</div>
+                              <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
+                            </div>
                           </td>
                           <td className="p-3 font-mono font-bold text-orange-600 text-sm">
                             {b.startOtp}
