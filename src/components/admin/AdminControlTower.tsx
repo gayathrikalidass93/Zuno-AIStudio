@@ -715,6 +715,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     <th className="p-3">Status</th>
                     <th className="p-3">Customer & Location</th>
                     <th className="p-3">Helper</th>
+                    <th className="p-3">Customer / Helper Acceptance</th>
                     <th className="p-3">Tasks / Duration</th>
                     <th className="p-3">Start OTP</th>
                     <th className="p-3">Negotiation / Bill / Payout</th>
@@ -787,6 +788,27 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             ) : (
                               <span className="text-stone-400 italic">Unassigned</span>
                             )}
+                          </td>
+                          <td className="p-3 min-w-44">
+                            <div className="space-y-2 text-[11px]">
+                              <div className="flex items-start gap-1.5">
+                                {['confirmed', 'on_the_way', 'started', 'completed'].includes(b.status) ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                )}
+                                <span><strong>Customer:</strong> {['confirmed', 'on_the_way', 'started', 'completed'].includes(b.status) ? 'Accepted / confirmed' : 'Awaiting confirmation'}</span>
+                              </div>
+                              <div className="flex items-start gap-1.5">
+                                {b.priceNegotiationStatus === 'accepted' ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                )}
+                                <span><strong>Helper:</strong> {b.priceNegotiationStatus === 'accepted' ? 'Accepted offer' : b.priceNegotiationStatus === 'countered' ? 'Counter-offered' : b.priceNegotiationStatus === 'declined' ? 'Declined' : 'Awaiting response'}</span>
+                              </div>
+                              <div className="text-[10px] text-stone-500">Inferred from booking status and price negotiation</div>
+                            </div>
                           </td>
                           <td className="p-3 min-w-56">
                             <div className="space-y-1.5 mb-2">
