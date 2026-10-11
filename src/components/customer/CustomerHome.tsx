@@ -58,7 +58,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
 
   const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
   const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper'
-    ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent`
+    ? (b.helperId ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : `Finding a helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} saved`)
     : b.priceNegotiationStatus === 'countered'
       ? `Helper countered at ₹${b.helperCounterPrice}. Awaiting your response.`
       : b.priceNegotiationStatus === 'accepted'
@@ -121,7 +121,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
               </div>
               <span className="text-[10px] font-bold uppercase text-orange-700">
                 {b.priceNegotiationStatus === 'pending_helper'
-                  ? 'Pending from Helper'
+                  ? (b.helperId ? 'Pending from Helper' : 'Finding a Helper')
                   : b.priceNegotiationStatus === 'countered'
                     ? 'Helper Countered'
                     : b.priceNegotiationStatus === 'accepted'
