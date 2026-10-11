@@ -1266,7 +1266,7 @@ const HELPER_RATES_CONFIG: Record<
   },
 };
 
-export const INITIAL_HELPERS: Helper[] = RAW_HELPERS.map((h) => {
+const SEEDED_HELPERS: Helper[] = RAW_HELPERS.map((h) => {
   const cfg = HELPER_RATES_CONFIG[h.id];
   const rate = cfg?.hourlyRate || 249;
   return {
@@ -1276,6 +1276,42 @@ export const INITIAL_HELPERS: Helper[] = RAW_HELPERS.map((h) => {
     categoryRates: (cfg?.categoryRates as any) || { cleaning: 219, cooking: 249, laundry: 199 },
   };
 });
+
+// Dedicated mock supply for end-to-end testing. These profiles are explicitly
+// demo-only, verified/available, and cover all seeded service skills/localities.
+const DEMO_LOCALITIES = ['Pallavaram', 'Chromepet', 'Medavakkam', 'Velachery', 'Pammal'];
+const DEMO_SKILLS = Array.from(new Set(RAW_HELPERS.flatMap((helper) => helper.skills)));
+const DEMO_HELPERS: Helper[] = DEMO_LOCALITIES.map((locality, index) => {
+  const template = SEEDED_HELPERS[index % SEEDED_HELPERS.length];
+  return {
+    ...template,
+    id: `hlp_demo_${index + 1}`,
+    name: `ZUNO Demo Helper ${index + 1}`,
+    phone: `+91 90000 1000${index + 1}`,
+    locality,
+    serviceRadiusKm: 25,
+    preferredLocalities: [...DEMO_LOCALITIES, 'Keelkattalai', 'Tambaram', 'Perungalathur'],
+    skills: DEMO_SKILLS,
+    availabilityStatus: 'available_now',
+    workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    isActive: true,
+    verificationStatus: 'verified',
+    isChildcareVerified: true,
+    isElderAssistanceEligible: true,
+    backgroundCheckStatus: 'verified',
+    verificationChecklist: {
+      idVerified: true,
+      addressReferenceVerified: true,
+      experienceVerified: true,
+      skillsAssessed: true,
+      childcareScreened: true,
+    },
+    apartmentsServed: [],
+    createdAt: '2026-10-11T09:00:00Z',
+  };
+});
+
+export const INITIAL_HELPERS: Helper[] = [...SEEDED_HELPERS, ...DEMO_HELPERS];
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
