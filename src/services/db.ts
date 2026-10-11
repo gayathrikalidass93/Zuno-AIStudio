@@ -498,6 +498,10 @@ export const db = {
     if (bookingData.helperId && !state.helpers.some((h) => h.id === bookingData.helperId && h.isActive)) {
       throw new Error('Selected helper is not available.');
     }
+    const candidateHelperIds = [...new Set(bookingData.candidateHelperIds || [])];
+    if (candidateHelperIds.some((id) => !state.helpers.some((h) => h.id === id && h.isActive && h.verificationStatus === 'verified'))) {
+      throw new Error('One or more offered helpers are no longer eligible.');
+    }
     const [y,m,day] = bookingData.scheduledDate.split('-').map(Number);
     const requestedDate = new Date(y, m - 1, day);
     const now = new Date();
@@ -513,6 +517,8 @@ export const db = {
 
     const newBooking: Booking = {
       ...bookingData,
+      helperId: bookingData.helperId,
+      candidateHelperIds: bookingData.helperId ? [] : candidateHelperIds,
       id,
       bookingCode,
       startOtp: otp,
@@ -539,10 +545,22 @@ export const db = {
 
   respondToPriceOffer(bookingId: string, helperId: string, action: 'accept' | 'counter' | 'decline', counterPrice?: number): Booking | undefined {
     const booking = state.bookings.find((b) => b.id === bookingId);
-    if (!booking || booking.helperId !== helperId) return undefined;
+    if (!booking) return undefined;
+
+    const isAssignedHelper = booking.helperId === helperId;
+    const isInvitedHelper = !booking.helperId && (booking.candidateHelperIds || []).includes(helperId);
+    // This guard makes acceptance first-wins: once helperId is set, other invited
+    // helpers cannot accept the same request.
+    if (!isAssignedHelper && !isInvitedHelper) return undefined;
+    if (booking.status !== 'requested' || booking.priceNegotiationStatus !== 'pending_helper') return undefined;
+
+    const responder = db.getHelper(helperId);
+    const now = new Date().toISOString();
 
     if (action === 'accept') {
       const agreed = booking.customerOfferPrice ?? booking.negotiatedAgreedPrice ?? booking.pricing.totalAmount;
+      booking.helperId = helperId;
+      booking.candidateHelperIds = [];
       booking.negotiatedAgreedPrice = agreed;
       booking.helperCounterPrice = undefined;
       booking.pricing.baseAmount = agreed;
@@ -551,14 +569,20 @@ export const db = {
       booking.pricing.helperPayout = agreed;
       booking.priceNegotiationStatus = 'accepted';
       booking.status = 'helper_assigned';
-      booking.timestamps.assignedAt = booking.timestamps.assignedAt || new Date().toISOString();
+      booking.timestamps.assignedAt = now;
+      db.logAudit({
+        bookingId,
+        event: `Helper ${responder?.name || 'Helper'} accepted the broadcast request and was assigned; the request was removed from other helpers.`,
+        actor: 'helper',
+        actorName: responder?.name || 'Helper',
+        details: { helperId },
+      });
     } else if (action === 'counter') {
-      if (!counterPrice || counterPrice <= 0) return undefined;
+      // Counter-offers require a single assigned helper so one helper cannot
+      // overwrite the shared price while other invited helpers are responding.
+      if (isInvitedHelper || !counterPrice || counterPrice <= 0) return undefined;
       booking.helperCounterPrice = counterPrice;
       booking.negotiatedAgreedPrice = undefined;
-      // A counter is a proposal, not an acceptance. Keep the original
-      // customer offer for history, but display the helper counter as the
-      // current proposed bill until the customer accepts it.
       booking.pricing.baseAmount = counterPrice;
       booking.pricing.subtotal = counterPrice;
       booking.pricing.totalAmount = counterPrice;
@@ -566,10 +590,21 @@ export const db = {
       booking.status = 'requested';
       booking.timestamps.assignedAt = undefined;
     } else {
-      const declinedHelper = db.getHelper(helperId);
+      if (isInvitedHelper) {
+        booking.candidateHelperIds = (booking.candidateHelperIds || []).filter((id) => id !== helperId);
+        db.logAudit({
+          bookingId,
+          event: `Helper ${responder?.name || 'Helper'} declined the broadcast request.`,
+          actor: 'helper',
+          actorName: responder?.name || 'Helper',
+          details: { helperId, remainingCandidateHelperIds: booking.candidateHelperIds },
+        });
+        if (booking.candidateHelperIds.length > 0) {
+          saveState();
+          return booking;
+        }
+      }
       booking.priceNegotiationStatus = 'declined';
-      // Keep the original booking visible in the customer's Upcoming bookings.
-      // Decline is a negotiation outcome, not a cancellation.
       booking.status = 'requested';
       booking.timestamps.assignedAt = undefined;
       booking.timestamps.cancelledAt = undefined;
@@ -577,14 +612,13 @@ export const db = {
       booking.replacement = {
         status: 'searching',
         originalHelperId: helperId,
-        offeredAt: new Date().toISOString(),
+        offeredAt: now,
       };
-
       db.logAudit({
         bookingId,
-        event: `Helper ${declinedHelper?.name || 'Helper'} declined the price offer. Customer can search for another helper.`,
+        event: `Helper ${responder?.name || 'Helper'} declined the offer; no invited helpers remain on this request.`,
         actor: 'helper',
-        actorName: declinedHelper?.name || 'Helper',
+        actorName: responder?.name || 'Helper',
       });
     }
 
@@ -592,7 +626,7 @@ export const db = {
       bookingId,
       event: `Helper price response: ${action}${counterPrice ? ` ₹${counterPrice}` : ''}`,
       actor: 'helper',
-      actorName: db.getHelper(helperId)?.name || 'Helper',
+      actorName: responder?.name || 'Helper',
     });
     saveState();
     return booking;
