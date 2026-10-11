@@ -761,6 +761,13 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             >
                               {b.status.replace(/_/g, ' ')}
                             </span>
+                            {b.status === 'replacement_required' && b.cancellation?.cancelledBy === 'helper' && (
+                              <div className="mt-1 max-w-40 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
+                                <div className="font-bold">⚠ Helper declined after assignment</div>
+                                <div className="mt-0.5">Reason: {b.cancellation.reason || 'No reason provided'}</div>
+                                <div className="mt-0.5">Rebroadcast to {(b.candidateHelperIds || []).length} helper(s)</div>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3">
                             <div className="font-semibold text-stone-900">
