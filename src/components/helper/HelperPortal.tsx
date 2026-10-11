@@ -50,7 +50,8 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
     () => bookings.filter(
       (booking) =>
         (booking.helperId === helper.id ||
-          (!booking.helperId && (booking.candidateHelperIds || []).includes(helper.id))) &&
+          (!booking.helperId && (booking.candidateHelperIds || []).includes(helper.id)) ||
+          (booking.status === 'cancelled' && booking.cancellation?.cancelledBy === 'customer' && (booking.notifiedHelperIds || []).includes(helper.id))) &&
         !(booking.priceNegotiationStatus === 'declined' && booking.status === 'requested')
     ),
     [bookings, helper.id]
@@ -58,6 +59,9 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
   const activeBookings = helperBookings.filter(
     (booking) => booking.status !== 'cancelled' && booking.status !== 'completed'
+  );
+  const customerCancelledBookings = helperBookings.filter(
+    (booking) => booking.status === 'cancelled' && booking.cancellation?.cancelledBy === 'customer'
   );
   const completedBookings = helperBookings.filter((booking) => booking.status === 'completed');
 
@@ -235,6 +239,22 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                       <div className="text-[11px] text-stone-600 mt-1">Bathrooms: {item.workScope.bathrooms}</div>
                     )}
                   </button>
+                );
+              })}
+            </div>
+          )}
+          {customerCancelledBookings.length > 0 && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+              <div className="font-bold text-sm text-rose-900">Customer cancellations</div>
+              {customerCancelledBookings.map((cancelled) => {
+                const serviceNames = cancelled.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id);
+                return (
+                  <div key={cancelled.id} className="rounded-xl bg-white border border-rose-100 p-3 text-xs">
+                    <div className="font-bold text-stone-900">{serviceNames.join(', ') || 'Service request'} · {cancelled.bookingCode}</div>
+                    <div className="mt-1 text-stone-600">The customer cancelled this request.</div>
+                    <div className="mt-1 text-rose-800"><b>Reason:</b> {cancelled.cancellation?.reason || 'No reason provided'}</div>
+                    <div className="mt-1 text-[10px] text-stone-500">Cancelled: {cancelled.cancellation?.cancelledAt ? new Date(cancelled.cancellation.cancelledAt).toLocaleString() : 'Time unavailable'}</div>
+                  </div>
                 );
               })}
             </div>
