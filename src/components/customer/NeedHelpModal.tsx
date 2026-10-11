@@ -35,7 +35,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
-  const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : ['cleaning']);
+  const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : []);
   const [bedrooms, setBedrooms] = useState(2);
   const [halls, setHalls] = useState(1);
   const [kitchens, setKitchens] = useState(1);
@@ -55,7 +55,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setFlat(customer.flat || '');
     setWorkDate(getMinWorkDate());
     setCategory(preselectedCategory || 'cleaning');
-    setSelectedCategories(preselectedCategory ? [preselectedCategory] : ['cleaning']);
+    setSelectedCategories(preselectedCategory ? [preselectedCategory] : []);
     setOffer('');
     setCounter(0);
     setAgreedPrice(0);
