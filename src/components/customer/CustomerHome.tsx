@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Booking, Customer, Helper } from '../../types';
+import { Booking, Customer, Helper, ServiceCategory } from '../../types';
 import { db } from '../../services/db';
 import { MASTER_TASKS } from '../../data/services';
 
@@ -7,7 +7,7 @@ interface Props {
   customer: Customer;
   helpers: Helper[];
   bookings: Booking[];
-  onOpenNeedHelp: () => void;
+  onOpenNeedHelp: (category?: ServiceCategory) => void;
   onBookAgain: (booking: Booking) => void;
   onViewBookingDetails: (bookingId: string) => void;
   onToggleFavourite: (helperId: string) => void;
@@ -77,7 +77,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
         <h2 className="text-sm font-bold text-stone-800 mb-3">Services</h2>
         <div className="grid grid-cols-2 gap-3">
           {SERVICES.map(s => (
-            <button key={s.id} onClick={onOpenNeedHelp} className="bg-white border border-stone-200 rounded-2xl p-4 text-left hover:border-orange-400 hover:shadow-sm">
+            <button key={s.id} onClick={() => onOpenNeedHelp(s.id)} className="bg-white border border-stone-200 rounded-2xl p-4 text-left hover:border-orange-400 hover:shadow-sm">
               <div className="text-2xl mb-2">{s.icon}</div>
               <div className="font-bold text-sm text-stone-900">{s.name}</div>
             </button>
@@ -106,7 +106,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
                 <div className="font-bold text-sm">
                   {b.tasks?.length > 1
                     ? `${b.tasks.length} services: ${b.tasks.map(taskId => MASTER_TASKS.find(t => t.id === taskId)?.name || taskId).join(' + ')}`
-                    : MASTER_TASKS.find(t => t.id === b.tasks?.[0])?.name || b.category || 'Household assistance'}
+                    : MASTER_TASKS.find(t => t.id === b.tasks?.[0])?.name || SERVICES.find(s => s.id === b.category)?.name || b.workScope?.description || 'Household assistance'}
                 </div>
                 <div className="text-xs text-stone-500 mt-1">{b.scheduledDate || 'Work date'} · {b.locality}</div>
               </div>
