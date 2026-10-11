@@ -183,7 +183,7 @@ export default function App() {
             customer={activeCustomer}
             helpers={state.helpers}
             bookings={state.bookings}
-            onOpenNeedHelp={handleOpenNeedHelp}
+            onOpenNeedHelp={(category) => handleOpenNeedHelp('casual', category)}
             onBookAgain={handleBookAgain}
             onViewBookingDetails={(id) => setActiveBookingModalId(id)}
             onToggleFavourite={handleToggleFavourite}
