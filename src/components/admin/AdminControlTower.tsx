@@ -821,6 +821,35 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                 )}
                               </div>
                             )}
+                            {helper && (b.notifiedHelperIds || []).length > 0 && (
+                              <div className="mt-2 rounded-lg bg-stone-50 border border-stone-200 p-2 space-y-1">
+                                <div className="text-[10px] font-bold text-stone-700">
+                                  Request sent to all helpers ({(b.notifiedHelperIds || []).length})
+                                </div>
+                                {(b.notifiedHelperIds || []).map((helperId) => {
+                                  const notifiedHelper = helpers.find((item) => item.id === helperId);
+                                  const recipientStatus = b.helperId === helperId
+                                    ? 'Accepted · assigned'
+                                    : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
+                                      ? 'Customer cancelled'
+                                      : (b.candidateHelperIds || []).includes(helperId)
+                                        ? 'Awaiting response'
+                                        : 'Closed · another helper accepted or request ended';
+                                  return (
+                                    <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
+                                      <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
+                                      <span className="text-stone-500 text-right">{recipientStatus}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {helper && b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
+                              <div className="mt-1 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
+                                <strong>Customer cancellation reason:</strong> {b.cancellation.reason || 'No reason provided'}
+                                <div>Cancelled: {new Date(b.cancellation.cancelledAt).toLocaleString()}</div>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 min-w-44">
                             <div className="space-y-2 text-[11px]">
