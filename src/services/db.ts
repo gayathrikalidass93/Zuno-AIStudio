@@ -519,6 +519,7 @@ export const db = {
       ...bookingData,
       helperId: bookingData.helperId,
       candidateHelperIds: bookingData.helperId ? [] : candidateHelperIds,
+      notifiedHelperIds: [...new Set([...(bookingData.notifiedHelperIds || []), ...candidateHelperIds, ...(bookingData.helperId ? [bookingData.helperId] : [])])],
       id,
       bookingCode,
       startOtp: otp,
@@ -564,10 +565,10 @@ export const db = {
 
     db.logAudit({
       bookingId,
-      event: `Customer cancelled booking. Comment: ${note}`,
+      event: `Customer cancelled booking. Comment: ${note}. Notified helpers: ${(booking.notifiedHelperIds || booking.candidateHelperIds || []).join(', ') || booking.helperId || 'none recorded'}.`,
       actor: 'customer',
       actorName: db.getCustomer(customerId)?.name || 'Customer',
-      details: { reason: note },
+      details: { reason: note, notifiedHelperIds: booking.notifiedHelperIds || [], helperId: booking.helperId },
     });
     saveState();
     return true;
@@ -590,6 +591,7 @@ export const db = {
     if (action === 'accept') {
       const agreed = booking.customerOfferPrice ?? booking.negotiatedAgreedPrice ?? booking.pricing.totalAmount;
       booking.helperId = helperId;
+      booking.notifiedHelperIds = [...new Set([...(booking.notifiedHelperIds || []), ...(booking.candidateHelperIds || []), helperId])];
       booking.candidateHelperIds = [];
       booking.negotiatedAgreedPrice = agreed;
       booking.helperCounterPrice = undefined;
@@ -621,6 +623,7 @@ export const db = {
       booking.timestamps.assignedAt = undefined;
     } else {
       if (isInvitedHelper) {
+        booking.notifiedHelperIds = [...new Set([...(booking.notifiedHelperIds || []), ...(booking.candidateHelperIds || []), helperId])];
         booking.candidateHelperIds = (booking.candidateHelperIds || []).filter((id) => id !== helperId);
         db.logAudit({
           bookingId,
