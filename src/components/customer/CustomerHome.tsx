@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Booking, Customer, Helper, ServiceCategory } from '../../types';
 import { db } from '../../services/db';
 import { MASTER_TASKS } from '../../data/services';
@@ -7,6 +7,7 @@ interface Props {
   customer: Customer;
   helpers: Helper[];
   bookings: Booking[];
+  lastCreatedBookingId?: string | null;
   onOpenNeedHelp: (category?: ServiceCategory) => void;
   onBookAgain: (booking: Booking) => void;
   onViewBookingDetails: (bookingId: string) => void;
@@ -24,11 +25,19 @@ const SERVICES = [
   { id: 'family', icon: '👨‍👩‍👧', name: 'Family Assistance' },
 ] as const;
 
-export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onLogout }) => {
+export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, lastCreatedBookingId, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onLogout }) => {
   const [tab, setTab] = useState<'home'|'bookings'|'profile'>('home');
   const [bookingTab, setBookingTab] = useState<'upcoming'|'active'|'history'>('upcoming');
   const [language, setLanguage] = useState(customer.preferredLanguage || 'English');
   const [counterInput, setCounterInput] = useState<string>('');
+
+  // After a booking is created, open the Upcoming list so the new service is easy to find.
+  useEffect(() => {
+    if (lastCreatedBookingId && bookings.some((booking) => booking.id === lastCreatedBookingId && booking.customerId === customer.id)) {
+      setTab('bookings');
+      setBookingTab('upcoming');
+    }
+  }, [lastCreatedBookingId, bookings, customer.id]);
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
   // A declined price offer is still an open booking; never hide it because of its status.
@@ -97,7 +106,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, onO
             </button>
           ))}
         </div>
-        {list.slice(0,3).map(b => {
+        {list.map(b => {
           const helper = getHelper(b);
           const isNegotiationFinal = b.priceNegotiationStatus === 'accepted';
           return <div key={b.id} onClick={() => onViewBookingDetails(b.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onViewBookingDetails(b.id); }} className="w-full text-left bg-white border border-stone-200 rounded-2xl p-4 mb-2 cursor-pointer">
