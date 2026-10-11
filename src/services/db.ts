@@ -155,6 +155,13 @@ function loadState(): MarketplaceState {
                 : {}),
             };
           });
+          // Make newly added seed/demo customers available to existing browser profiles
+          // without overwriting customer profiles or booking history already stored locally.
+          const existingCustomerIds = new Set((parsed.customers || []).map((c: any) => c.id));
+          parsed.customers = [
+            ...(parsed.customers || []),
+            ...INITIAL_CUSTOMERS.filter((customer) => !existingCustomerIds.has(customer.id)),
+          ];
           parsed.privacyConsents = parsed.privacyConsents || INITIAL_PRIVACY_CONSENTS;
           parsed.privacyRequests = parsed.privacyRequests || INITIAL_PRIVACY_REQUESTS;
           return parsed;
