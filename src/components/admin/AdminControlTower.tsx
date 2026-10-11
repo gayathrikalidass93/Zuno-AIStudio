@@ -424,7 +424,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     {replacementRequiredCount} Booking(s) Require Helper Replacement
                   </div>
                   <div className="text-[11px] text-amber-800">
-                    A helper cancelled. ZUNO Match engine has found candidate replacements awaiting customer confirmation.
+                    Warning: a helper declined after assignment. The booking has been rebroadcast to eligible helpers; review the reason and monitor for a new acceptance.
                   </div>
                 </div>
               </div>
