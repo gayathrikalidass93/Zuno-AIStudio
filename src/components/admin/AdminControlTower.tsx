@@ -717,7 +717,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     <th className="p-3">Helper</th>
                     <th className="p-3">Tasks / Duration</th>
                     <th className="p-3">Start OTP</th>
-                    <th className="p-3">Bill / Payout</th>
+                    <th className="p-3">Negotiation / Bill / Payout</th>
                     <th className="p-3">Admin Actions</th>
                   </tr>
                 </thead>
@@ -771,7 +771,19 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                           </td>
                           <td className="p-3">
                             {helper ? (
-                              <div className="font-medium text-stone-900">{helper.name}</div>
+                              <div className="space-y-1">
+                                <div className="font-medium text-stone-900">{helper.name}</div>
+                                {helper.phone && (
+                                  <a
+                                    href={`tel:${helper.phone.replace(/[^+\d]/g, '')}`}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100"
+                                    aria-label={`Call helper ${helper.name} to confirm the booking`}
+                                    title="Optional: call helper to confirm the booking"
+                                  >
+                                    Call helper · {helper.phone}
+                                  </a>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-stone-400 italic">Unassigned</span>
                             )}
@@ -816,15 +828,40 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                           <td className="p-3 font-mono font-bold text-orange-600 text-sm">
                             {b.startOtp}
                           </td>
-                          <td className="p-3 font-mono">
-                            <div className="font-bold text-stone-900">₹{b.pricing.totalAmount}</div>
-                            {b.workScopeBreakdown?.negotiatedDiscount && (
-                              <div className="text-[10px] text-emerald-700">
-                                Agreed (was ₹{b.workScopeBreakdown.suggestedTotalPrice})
+                          <td className="p-3 min-w-48">
+                            <div className="space-y-1.5">
+                              <div className="rounded-lg bg-orange-50 border border-orange-100 p-2">
+                                <div className="text-[10px] text-orange-800 font-semibold">Customer offer</div>
+                                <div className="font-mono font-bold text-stone-900">
+                                  {b.customerOfferPrice != null ? `₹${b.customerOfferPrice}` : '—'}
+                                </div>
                               </div>
-                            )}
-                            <div className="text-[10px] text-stone-500">
-                              Payout: ₹{b.pricing.helperPayout}
+                              <div className="rounded-lg bg-blue-50 border border-blue-100 p-2">
+                                <div className="text-[10px] text-blue-800 font-semibold">Helper counter-offer</div>
+                                <div className="font-mono font-bold text-stone-900">
+                                  {b.helperCounterPrice != null ? `₹${b.helperCounterPrice}` : 'No counter'}
+                                </div>
+                              </div>
+                              <div className={`rounded-lg border p-2 ${b.priceNegotiationStatus === 'accepted' ? 'bg-emerald-50 border-emerald-200' : 'bg-stone-50 border-stone-200'}`}>
+                                <div className="text-[10px] text-stone-600 font-semibold">Final agreed price</div>
+                                <div className="font-mono font-black text-stone-900">
+                                  {b.priceNegotiationStatus === 'accepted' && b.negotiatedAgreedPrice != null
+                                    ? `₹${b.negotiatedAgreedPrice}`
+                                    : 'Not agreed yet'}
+                                </div>
+                                <div className="text-[10px] text-stone-500 capitalize">
+                                  {b.priceNegotiationStatus ? b.priceNegotiationStatus.replace(/_/g, ' ') : 'Negotiation not recorded'}
+                                </div>
+                              </div>
+                              <div className="border-t border-stone-100 pt-1.5">
+                                <div className="font-bold text-stone-900">Current bill: ₹{b.pricing.totalAmount}</div>
+                                <div className="text-[10px] text-stone-500">Payout: ₹{b.pricing.helperPayout}</div>
+                                {b.workScopeBreakdown?.negotiatedDiscount && (
+                                  <div className="text-[10px] text-emerald-700">
+                                    Discount (was ₹{b.workScopeBreakdown.suggestedTotalPrice})
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="p-3 min-w-52 space-y-2">
