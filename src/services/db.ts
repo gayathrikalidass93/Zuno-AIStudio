@@ -543,6 +543,36 @@ export const db = {
     return newBooking;
   },
 
+  cancelBookingByCustomer(bookingId: string, customerId: string, reason?: string): boolean {
+    const booking = state.bookings.find((b) => b.id === bookingId && b.customerId === customerId);
+    if (!booking) return false;
+    // Customers can cancel before work starts; active/completed bookings need support intervention.
+    if (!['requested', 'confirmed', 'helper_assigned', 'replacement_required'].includes(booking.status)) return false;
+    if (booking.status === 'cancelled' || booking.status === 'completed') return false;
+
+    const cancelledAt = new Date().toISOString();
+    const note = reason?.trim() || 'No comment provided';
+    booking.status = 'cancelled';
+    booking.candidateHelperIds = [];
+    booking.cancellation = {
+      reason: note,
+      cancelledBy: 'customer',
+      cancelledAt,
+      previousHelperId: booking.helperId,
+    };
+    booking.timestamps.cancelledAt = cancelledAt;
+
+    db.logAudit({
+      bookingId,
+      event: `Customer cancelled booking. Comment: ${note}`,
+      actor: 'customer',
+      actorName: db.getCustomer(customerId)?.name || 'Customer',
+      details: { reason: note },
+    });
+    saveState();
+    return true;
+  },
+
   respondToPriceOffer(bookingId: string, helperId: string, action: 'accept' | 'counter' | 'decline', counterPrice?: number): Booking | undefined {
     const booking = state.bookings.find((b) => b.id === bookingId);
     if (!booking) return undefined;
