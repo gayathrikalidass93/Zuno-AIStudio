@@ -789,29 +789,31 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                               <div className="space-y-1">
                                 <span className="text-stone-400 italic">Awaiting helper acceptance</span>
                                 {((b.notifiedHelperIds || b.candidateHelperIds || []).length > 0) && (
-                                  <div className="mt-1 rounded-lg bg-stone-50 border border-stone-200 p-2 space-y-1">
-                                    <div className="text-[10px] font-bold text-stone-700">
-                                      Request sent to all helpers ({(b.notifiedHelperIds || b.candidateHelperIds || []).length})
+                                  <details className="mt-1 rounded-lg bg-stone-50 border border-stone-200 p-2">
+                                    <summary className="cursor-pointer text-[10px] font-bold text-stone-700">
+                                      Helpers ({(b.notifiedHelperIds || b.candidateHelperIds || []).length}) · View recipients
+                                    </summary>
+                                    <div className="mt-2 space-y-1">
+                                      {(b.notifiedHelperIds || b.candidateHelperIds || []).map((helperId) => {
+                                        const notifiedHelper = helpers.find((item) => item.id === helperId);
+                                        const recipientStatus = b.helperId === helperId
+                                          ? 'Accepted · assigned'
+                                          : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
+                                            ? 'Customer cancelled'
+                                            : (b.candidateHelperIds || []).includes(helperId)
+                                              ? 'Awaiting response'
+                                              : b.helperId
+                                                ? 'Closed · another helper accepted'
+                                                : 'Declined / no longer pending';
+                                        return (
+                                          <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
+                                            <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
+                                            <span className="text-stone-500 text-right">{recipientStatus}</span>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
-                                    {(b.notifiedHelperIds || b.candidateHelperIds || []).map((helperId) => {
-                                      const notifiedHelper = helpers.find((item) => item.id === helperId);
-                                      const recipientStatus = b.helperId === helperId
-                                        ? 'Accepted · assigned'
-                                        : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
-                                          ? 'Customer cancelled'
-                                          : (b.candidateHelperIds || []).includes(helperId)
-                                            ? 'Awaiting response'
-                                            : b.helperId
-                                              ? 'Closed · another helper accepted'
-                                              : 'Declined / no longer pending';
-                                      return (
-                                        <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
-                                          <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
-                                          <span className="text-stone-500 text-right">{recipientStatus}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                                  </details>
                                 )}
                                 {b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
                                   <div className="mt-1 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
@@ -822,27 +824,29 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                               </div>
                             )}
                             {helper && (b.notifiedHelperIds || []).length > 0 && (
-                              <div className="mt-2 rounded-lg bg-stone-50 border border-stone-200 p-2 space-y-1">
-                                <div className="text-[10px] font-bold text-stone-700">
-                                  Request sent to all helpers ({(b.notifiedHelperIds || []).length})
+                              <details className="mt-2 rounded-lg bg-stone-50 border border-stone-200 p-2">
+                                <summary className="cursor-pointer text-[10px] font-bold text-stone-700">
+                                  Helpers ({(b.notifiedHelperIds || []).length}) · View recipients
+                                </summary>
+                                <div className="mt-2 space-y-1">
+                                  {(b.notifiedHelperIds || []).map((helperId) => {
+                                    const notifiedHelper = helpers.find((item) => item.id === helperId);
+                                    const recipientStatus = b.helperId === helperId
+                                      ? 'Accepted · assigned'
+                                      : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
+                                        ? 'Customer cancelled'
+                                        : (b.candidateHelperIds || []).includes(helperId)
+                                          ? 'Awaiting response'
+                                          : 'Closed · another helper accepted or request ended';
+                                    return (
+                                      <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
+                                        <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
+                                        <span className="text-stone-500 text-right">{recipientStatus}</span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                                {(b.notifiedHelperIds || []).map((helperId) => {
-                                  const notifiedHelper = helpers.find((item) => item.id === helperId);
-                                  const recipientStatus = b.helperId === helperId
-                                    ? 'Accepted · assigned'
-                                    : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
-                                      ? 'Customer cancelled'
-                                      : (b.candidateHelperIds || []).includes(helperId)
-                                        ? 'Awaiting response'
-                                        : 'Closed · another helper accepted or request ended';
-                                  return (
-                                    <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
-                                      <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
-                                      <span className="text-stone-500 text-right">{recipientStatus}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              </details>
                             )}
                             {helper && b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
                               <div className="mt-1 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
