@@ -583,7 +583,7 @@ export const db = {
     // This guard makes acceptance first-wins: once helperId is set, other invited
     // helpers cannot accept the same request.
     if (!isAssignedHelper && !isInvitedHelper) return undefined;
-    if (booking.status !== 'requested' || booking.priceNegotiationStatus !== 'pending_helper') return undefined;
+    if (!['requested', 'replacement_required'].includes(booking.status) || booking.priceNegotiationStatus !== 'pending_helper') return undefined;
 
     const responder = db.getHelper(helperId);
     const now = new Date().toISOString();
@@ -785,80 +785,82 @@ export const db = {
     return { success: true, message: 'OTP verified! Visit officially started.' };
   },
 
-  // Helper Cancellation & Automatic Replacement
+  // Helper cancellation after assignment: rebroadcast the booking and raise an admin warning.
   cancelByHelper(bookingId: string, helperId: string, reason: string): { replacementFound: boolean; replacementHelper?: Helper } {
     const booking = state.bookings.find((b) => b.id === bookingId);
-    if (!booking) return { replacementFound: false };
+    if (!booking || booking.helperId !== helperId || ['started', 'completed', 'cancelled'].includes(booking.status)) {
+      return { replacementFound: false };
+    }
 
     const originalHelper = state.helpers.find((h) => h.id === helperId);
     const originalHelperName = originalHelper?.name || 'Helper';
+    const now = new Date().toISOString();
+    const note = reason?.trim() || 'No reason provided';
 
     booking.cancellation = {
-      reason,
+      reason: note,
       cancelledBy: 'helper',
-      cancelledAt: new Date().toISOString(),
+      cancelledAt: now,
       previousHelperId: helperId,
     };
 
-    // Transition to replacement_required
-    booking.status = 'replacement_required';
-
-    db.logAudit({
-      bookingId,
-      event: `Helper ${originalHelperName} cancelled: "${reason}". ZUNO Replacement Engine triggered.`,
-      actor: 'helper',
-      actorName: originalHelperName,
-    });
-
-    // Run ZUNO Match Engine to find replacement
+    // Find all eligible alternatives, excluding the helper who cancelled.
     const matches = matchHelpers(
       state.helpers.filter((h) => h.id !== helperId),
       {
         selectedTaskIds: booking.tasks,
         locality: booking.locality,
         apartmentName: booking.apartmentName,
-        isUrgent: false,
+        isUrgent: booking.isUrgent,
         customer: db.getCustomer(booking.customerId),
       }
-    );
+    ).filter((m) => m.isEligible);
 
-    const eligibleMatches = matches.filter((m) => m.isEligible);
-    if (eligibleMatches.length > 0) {
-      const topReplacement = eligibleMatches[0];
-      booking.replacement = {
-        status: 'found',
+    const alternativeHelperIds = [...new Set(matches.map((m) => m.helper.id))];
+    booking.helperId = undefined;
+    booking.candidateHelperIds = alternativeHelperIds;
+    booking.notifiedHelperIds = [...new Set([...(booking.notifiedHelperIds || []), helperId, ...alternativeHelperIds])];
+    booking.priceNegotiationStatus = 'pending_helper';
+    booking.helperCounterPrice = undefined;
+    booking.negotiatedAgreedPrice = undefined;
+    booking.customerOfferPrice = booking.customerOfferPrice ?? booking.pricing.totalAmount;
+    booking.timestamps.assignedAt = undefined;
+    booking.timestamps.confirmedAt = undefined;
+    booking.status = 'replacement_required';
+    booking.replacement = {
+      status: alternativeHelperIds.length > 0 ? 'searching' : 'unfulfilled',
+      originalHelperId: helperId,
+      offeredAt: now,
+    };
+
+    db.logAudit({
+      bookingId,
+      event: `WARNING: Helper ${originalHelperName} declined after assignment. Request rebroadcast to ${alternativeHelperIds.length} eligible helper(s). Reason: "${note}".`,
+      actor: 'helper',
+      actorName: originalHelperName,
+      details: {
+        warning: true,
+        reason: note,
         originalHelperId: helperId,
-        replacementHelperId: topReplacement.helper.id,
-        matchScore: topReplacement.score,
-        offeredAt: new Date().toISOString(),
-      };
+        candidateHelperIds: alternativeHelperIds,
+        notifiedHelperIds: booking.notifiedHelperIds,
+      },
+    });
 
+    if (alternativeHelperIds.length === 0) {
       db.logAudit({
         bookingId,
-        event: `Replacement found: ${topReplacement.helper.name} (${topReplacement.score}% match). Offered to customer.`,
-        actor: 'system',
-        actorName: 'ZUNO Match Engine',
-      });
-
-      saveState();
-      return { replacementFound: true, replacementHelper: topReplacement.helper };
-    } else {
-      booking.replacement = {
-        status: 'unfulfilled',
-        originalHelperId: helperId,
-        offeredAt: new Date().toISOString(),
-      };
-
-      db.logAudit({
-        bookingId,
-        event: 'No replacement helper available in vicinity. Customer offered rescheduling or refund.',
+        event: 'WARNING: No eligible alternative helpers found for rebroadcast; admin action required.',
         actor: 'system',
         actorName: 'ZUNO Replacement Engine',
+        details: { warning: true, originalHelperId: helperId },
       });
-
-      saveState();
-      return { replacementFound: false };
     }
+
+    saveState();
+    return alternativeHelperIds.length > 0
+      ? { replacementFound: true, replacementHelper: matches[0].helper }
+      : { replacementFound: false };
   },
 
   searchAlternativeHelpersAfterDecline(bookingId: string): { replacementFound: boolean; replacementHelper?: Helper } {
