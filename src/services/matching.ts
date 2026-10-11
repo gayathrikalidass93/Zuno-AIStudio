@@ -131,7 +131,26 @@ export function matchHelpers(
     }
 
     // Skills match calculation
-    const matchedSkillsCount = selectedTaskIds.filter((id) => helper.skills.includes(id)).length;
+    // Booking forms use one representative task ID per service category
+    // (for example "bath_clean"), while helper profiles store concrete skill IDs
+    // (for example "clean_bathroom" or "bath_regular_clean"). Match the requested
+    // category to real helper skills instead of requiring these IDs to be identical.
+    const categorySkillPrefixes: Record<string, string[]> = {
+      cleaning: ['clean_'],
+      bathroom_cleaning: ['bath_', 'clean_bathroom'],
+      cooking: ['cook_'],
+      laundry: ['laundry_'],
+      organisation: ['org_'],
+      family: ['fam_elder_', 'fam_'],
+      kids: ['kids_'],
+    };
+    const matchedSkillsCount = selectedTaskIds.filter((id) => {
+      if (helper.skills.includes(id)) return true;
+      const requestedTask = MASTER_TASKS.find((task) => task.id === id);
+      if (!requestedTask) return false;
+      const prefixes = categorySkillPrefixes[requestedTask.category] || [];
+      return helper.skills.some((skill) => prefixes.some((prefix) => skill.startsWith(prefix)));
+    }).length;
     const skillsCoveragePercent =
       selectedTaskIds.length > 0
         ? Math.round((matchedSkillsCount / selectedTaskIds.length) * 100)
