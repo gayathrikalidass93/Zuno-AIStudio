@@ -209,6 +209,36 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
       {tab === 'work' && (
         <section className="space-y-3">
+          {activeBookings.length > 0 && (
+            <div className="p-3 rounded-2xl bg-white border border-stone-200 space-y-2">
+              <div className="font-bold text-sm text-stone-900">Requests received</div>
+              <div className="text-[11px] text-stone-500">Select a request to view its details and respond.</div>
+              {activeBookings.map((item) => {
+                const isAssigned = item.helperId === helper.id;
+                const isInvitation = !item.helperId && (item.candidateHelperIds || []).includes(helper.id);
+                const serviceNames = item.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedBookingId(item.id)}
+                    className={`w-full text-left p-3 rounded-xl border ${booking?.id === item.id ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 bg-stone-50'}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-bold text-stone-900">{serviceNames.join(', ') || 'Service request'}</span>
+                      <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-bold ${isAssigned ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {isAssigned ? 'Assigned to you' : isInvitation ? 'Request received' : item.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 mt-1">Booking {item.bookingCode} · {item.scheduledDate}</div>
+                    {item.workScope && 'bathrooms' in item.workScope && (
+                      <div className="text-[11px] text-stone-600 mt-1">Bathrooms: {item.workScope.bathrooms}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {!booking && (
             <div className="p-6 rounded-3xl bg-white border border-stone-200 text-center">
               <div className="font-bold text-stone-900">No assigned work</div>
