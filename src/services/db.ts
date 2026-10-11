@@ -636,6 +636,19 @@ export const db = {
           saveState();
           return booking;
         }
+        if (booking.status === 'replacement_required') {
+          // Keep the admin warning active if every replacement invite is declined.
+          booking.priceNegotiationStatus = 'pending_helper';
+          db.logAudit({
+            bookingId,
+            event: 'WARNING: All invited replacement helpers declined or no replacement responses remain; admin action required.',
+            actor: 'system',
+            actorName: 'ZUNO Replacement Engine',
+            details: { warning: true, originalHelperId: booking.cancellation?.previousHelperId },
+          });
+          saveState();
+          return booking;
+        }
       }
       booking.priceNegotiationStatus = 'declined';
       booking.status = 'requested';
