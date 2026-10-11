@@ -137,7 +137,7 @@ export function matchHelpers(
         ? Math.round((matchedSkillsCount / selectedTaskIds.length) * 100)
         : 100;
 
-    if (skillsCoveragePercent < 60 && selectedTaskIds.length > 1) {
+    if (selectedTaskIds.length > 0 && skillsCoveragePercent < 60) {
       isEligible = false;
       ineligibilityReason = `Covers only ${matchedSkillsCount}/${selectedTaskIds.length} requested tasks`;
     }
