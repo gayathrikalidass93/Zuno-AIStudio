@@ -802,6 +802,41 @@ export const db = {
     return { replacementFound: true, replacementHelper: top.helper };
   },
 
+  adminReassignBooking(bookingId: string, helperId: string): boolean {
+    const booking = state.bookings.find((b) => b.id === bookingId);
+    const selected = state.helpers.find((h) => h.id === helperId && h.isActive && h.verificationStatus === 'verified');
+    if (!booking || !selected || selected.id === booking.helperId) return false;
+    if (['started', 'completed', 'cancelled'].includes(booking.status)) return false;
+
+    const previousHelperId = booking.helperId;
+    const previousHelper = state.helpers.find((h) => h.id === previousHelperId);
+    const now = new Date().toISOString();
+    booking.helperId = selected.id;
+    booking.status = 'requested';
+    booking.priceNegotiationStatus = 'pending_helper';
+    booking.customerOfferPrice = booking.customerOfferPrice ?? booking.negotiatedAgreedPrice ?? booking.pricing.totalAmount;
+    booking.helperCounterPrice = undefined;
+    booking.negotiatedAgreedPrice = undefined;
+    booking.timestamps.assignedAt = undefined;
+    booking.timestamps.confirmedAt = undefined;
+    booking.replacement = {
+      status: 'accepted',
+      originalHelperId: previousHelperId || '',
+      replacementHelperId: selected.id,
+      offeredAt: now,
+    };
+
+    db.logAudit({
+      bookingId,
+      event: `Admin reassigned booking from ${previousHelper?.name || 'Unassigned'} to ${selected.name}; fresh helper price acceptance requested.`,
+      actor: 'admin',
+      actorName: 'ZUNO Operations Admin',
+      details: { previousHelperId, newHelperId: selected.id },
+    });
+    saveState();
+    return true;
+  },
+
   chooseAlternativeAfterDecline(bookingId: string, helperId: string): boolean {
     const booking = state.bookings.find((b) => b.id === bookingId);
     if (!booking || booking.priceNegotiationStatus !== 'declined') return false;
