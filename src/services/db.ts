@@ -599,7 +599,7 @@ export const db = {
           actorName: responder?.name || 'Helper',
           details: { helperId, remainingCandidateHelperIds: booking.candidateHelperIds },
         });
-        if (booking.candidateHelperIds.length > 0) {
+        if ((booking.candidateHelperIds || []).length > 0) {
           saveState();
           return booking;
         }
