@@ -127,7 +127,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     onConfirmBooking({
       customerId: customer.id,
       helperId: undefined,
-      candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
+      candidateHelperIds: needsAdminCallback ? [] : eligibleHelpers.map((helper) => helper.id),
+      eligibleHelperIds: needsAdminCallback ? eligibleHelpers.map((helper) => helper.id) : [],
       bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
@@ -146,8 +147,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: needsAdminCallback },
       customerOfferPrice: finalPrice,
       negotiatedAgreedPrice: finalPrice,
-      priceNegotiationStatus: selectedCategories.some(s => s === 'organisation' || s === 'family') ? 'admin_callback_required' : 'pending_helper',
-      paymentStatus: selectedCategories.some(s => s === 'organisation' || s === 'family') ? 'awaiting_admin_quote' : 'pay_after_arrival_or_completion',
+      priceNegotiationStatus: needsAdminCallback ? 'admin_quote_needed' : 'pending_helper',
+      paymentStatus: needsAdminCallback ? 'awaiting_admin_quote' : 'pay_after_arrival_or_completion',
       pricing: {
         baseHourlyRate: selectedHelper?.hourlyRate ?? 0,
         durationHours: 1,
