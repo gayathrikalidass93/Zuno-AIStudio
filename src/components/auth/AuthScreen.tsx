@@ -27,7 +27,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   // Keep customer, helper, and admin entry points separate by URL.
-  const entryPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const entryRole: AuthRole = entryPath === '/helper' ? 'helper' : entryPath === '/admin' ? 'admin' : 'customer';
   const [roleTab, setRoleTab] = useState<AuthRole>(entryRole);
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
