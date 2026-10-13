@@ -544,6 +544,41 @@ export const db = {
     return newBooking;
   },
 
+  submitAdminQuote(bookingId: string, price: number): boolean {
+    const booking = state.bookings.find((b) => b.id === bookingId);
+    if (!booking || booking.priceNegotiationStatus !== 'admin_quote_needed' || !Number.isFinite(price) || price <= 0) return false;
+    booking.customerOfferPrice = price;
+    booking.negotiatedAgreedPrice = undefined;
+    booking.helperCounterPrice = undefined;
+    booking.pricing.baseAmount = price;
+    booking.pricing.subtotal = price;
+    booking.pricing.totalAmount = price;
+    booking.pricing.helperPayout = Math.round(price * 0.82);
+    booking.pricing.zunoFee = price - booking.pricing.helperPayout;
+    booking.priceNegotiationStatus = 'customer_pending_admin_quote';
+    booking.paymentStatus = 'awaiting_admin_quote';
+    db.logAudit({ bookingId, event: `Admin proposed custom-service price ₹${price}; awaiting customer acceptance.`, actor: 'admin', actorName: 'ZUNO Admin' });
+    saveState();
+    return true;
+  },
+
+  acceptAdminQuote(bookingId: string, customerId: string): boolean {
+    const booking = state.bookings.find((b) => b.id === bookingId && b.customerId === customerId);
+    if (!booking || booking.priceNegotiationStatus !== 'customer_pending_admin_quote' || !booking.customerOfferPrice || booking.customerOfferPrice <= 0) return false;
+    booking.negotiatedAgreedPrice = booking.customerOfferPrice;
+    booking.pricing.totalAmount = booking.customerOfferPrice;
+    booking.pricing.subtotal = booking.customerOfferPrice;
+    booking.pricing.baseAmount = booking.customerOfferPrice;
+    booking.candidateHelperIds = [...new Set(booking.eligibleHelperIds || [])];
+    booking.notifiedHelperIds = [...new Set([...(booking.notifiedHelperIds || []), ...booking.candidateHelperIds])];
+    booking.eligibleHelperIds = [];
+    booking.priceNegotiationStatus = 'pending_helper';
+    booking.paymentStatus = 'pay_after_arrival_or_completion';
+    db.logAudit({ bookingId, event: `Customer accepted admin quote ₹${booking.customerOfferPrice}; booking released to eligible helpers.`, actor: 'customer', actorName: db.getCustomer(customerId)?.name || 'Customer' });
+    saveState();
+    return true;
+  },
+
   cancelBookingByCustomer(bookingId: string, customerId: string, reason?: string): boolean {
     const booking = state.bookings.find((b) => b.id === bookingId && b.customerId === customerId);
     if (!booking) return false;
