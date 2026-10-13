@@ -213,22 +213,36 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
           <button disabled={!selectedCategories.length} onClick={()=>setStep(4)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
+
         {step === 4 && <div className="space-y-4">
           <h2 className="font-black text-xl">Work details</h2>
-          {category === 'cleaning' && <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">{[['Bedrooms',bedrooms,setBedrooms],['Halls',halls,setHalls],['Kitchens',kitchens,setKitchens]].map(([label,value,setter])=><label key={label as string} className="text-xs font-bold">{label as string}<input type="number" min="0" value={value as number} onChange={e=>(setter as any)(Number(e.target.value))} className="mt-1 w-full p-3 rounded-xl border"/></label>)}</div>
-            <div className="p-3 rounded-xl bg-stone-50 text-xs text-stone-600">Cleaning includes brooming and mopping using your home's available cleaning products.</div>
-            <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} onClick={()=>setCleaningType(t)} className={`p-3 rounded-xl border font-bold text-sm ${cleaningType===t?'border-orange-500 bg-orange-50':''}`}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
-          </div>}
-          {category === 'bathroom_cleaning' && <div className="space-y-4">
-            <label className="text-xs font-bold">Bathrooms<input type="number" min="1" value={bathrooms} onChange={e=>setBathrooms(Number(e.target.value))} className="mt-1 w-full p-3 rounded-xl border"/></label>
-            <div className="p-3 rounded-xl bg-stone-50 text-xs text-stone-600">Bathroom cleaning includes toilet, sink, floor, shower area, tiles and mirror as applicable, using your home's available cleaning products.</div>
-            <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} onClick={()=>setCleaningType(t)} className={`p-3 rounded-xl border font-bold text-sm ${cleaningType===t?'border-orange-500 bg-orange-50':''}`}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
-          </div>}
-          {category === 'cooking' && <div className="space-y-3"><label className="block text-xs font-bold">How many family members?<input type="number" min="1" value={cookingMembers} onChange={e=>setCookingMembers(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border" /></label><p className="text-sm text-stone-600">₹50 per family member. Minimum cooking charge: ₹50.</p></div>}
-          {category === 'laundry' && <div className="space-y-3"><div className="text-xs font-bold">Choose laundry method</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>setLaundryMethod('machine')} className={`p-3 rounded-xl border text-sm font-bold ${laundryMethod==='machine'?'border-orange-500 bg-orange-50':''}`}>Machine wash + hang up</button><button type="button" onClick={()=>setLaundryMethod('hand')} className={`p-3 rounded-xl border text-sm font-bold ${laundryMethod==='hand'?'border-orange-500 bg-orange-50':''}`}>Hand wash</button></div>{laundryMethod==='machine' ? <p className="text-sm text-stone-600">Includes one machine wash and hanging clothes to dry.</p> : <label className="block text-xs font-bold">Number of clothes/items<input type="number" min="1" value={laundryClothes} onChange={e=>setLaundryClothes(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border" /></label>}<p className="text-xs text-stone-500">Final laundry price can be confirmed by Zuno if needed.</p></div>}
-          {(category === 'organisation' || category === 'family') && <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm">Pricing depends on the work required. A Zuno admin team member will call you to understand the details and confirm the price.</div>}
-          {!['cleaning','bathroom_cleaning','cooking','laundry','organisation','family'].includes(category) && <div className="p-4 rounded-2xl bg-stone-50 text-sm">Tell the helper the exact work for <b>{services.find(s=>s.id===category)?.name}</b> in the notes on the review step.</div>}
+          <p className="text-sm text-stone-500">Enter details for every service you selected. Cooking is ₹50 per person; choose your laundry method below.</p>
+          {selectedCategories.map((service) => <div key={service} className="p-4 rounded-2xl border border-stone-200 space-y-3">
+            <h3 className="font-bold">{services.find(s => s.id === service)?.icon} {services.find(s => s.id === service)?.name}</h3>
+            {service === 'cleaning' && <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">{[['Bedrooms',bedrooms,setBedrooms],['Halls',halls,setHalls],['Kitchens',kitchens,setKitchens]].map(([label,value,setter])=><label key={label as string} className="text-xs font-bold">{label as string}<input type="number" min="0" value={value as number} onChange={e=>(setter as any)(Math.max(0, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>)}</div>
+              <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} type="button" onClick={()=>setCleaningType(t)} className={'p-3 rounded-xl border font-bold text-sm ' + (cleaningType===t?'border-orange-500 bg-orange-50':'')}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
+            </div>}
+            {service === 'bathroom_cleaning' && <div className="space-y-3">
+              <label className="text-xs font-bold">Number of bathrooms<input type="number" min="1" value={bathrooms} onChange={e=>setBathrooms(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>
+              <p className="text-xs text-stone-500">₹150 per bathroom.</p>
+            </div>}
+            {service === 'cooking' && <div className="space-y-3">
+              <label className="block text-xs font-bold">How many family members?<input type="number" min="1" value={cookingMembers} onChange={e=>setCookingMembers(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>
+              <p className="text-sm font-semibold text-orange-700">Cooking price: ₹50 × {cookingMembers} {cookingMembers === 1 ? 'person' : 'people'} = ₹{cookingMembers * 50}</p>
+            </div>}
+            {service === 'laundry' && <div className="space-y-3">
+              <div className="text-xs font-bold">Choose laundry method</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>setLaundryMethod('machine')} className={'p-3 rounded-xl border text-sm font-bold ' + (laundryMethod==='machine'?'border-orange-500 bg-orange-50':'')}>Machine wash</button>
+                <button type="button" onClick={()=>setLaundryMethod('hand')} className={'p-3 rounded-xl border text-sm font-bold ' + (laundryMethod==='hand'?'border-orange-500 bg-orange-50':'')}>Hand wash</button>
+              </div>
+              {laundryMethod==='machine' ? <p className="text-sm text-stone-600">One machine wash and hang clothes to dry.</p> : <label className="block text-xs font-bold">How many clothes/items?<input type="number" min="1" value={laundryClothes} onChange={e=>setLaundryClothes(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>}
+              <p className="text-xs text-stone-500">Estimated laundry price: ₹250. Zuno will confirm if the amount changes based on the load.</p>
+            </div>}
+            {(service === 'organisation' || service === 'family') && <div className="p-3 rounded-xl bg-amber-50 text-sm">A Zuno team member will call to understand the work and confirm pricing.</div>}
+          </div>)}
+          <div className="p-3 rounded-xl bg-stone-50 text-sm font-bold">Current estimated total: {needsAdminCallback ? 'To be confirmed by Zuno' : '₹' + suggestedPrice}</div>
           <button onClick={()=>setStep(5)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Continue to price <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
@@ -236,7 +250,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
           <h2 className="font-black text-xl">Review & negotiate</h2>
           <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll send your request to all suitable available helpers. The first to accept will be assigned.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
-            <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
+            <div className="font-bold">Selected services: {selectedCategories.map(service => services.find(s=>s.id===service)?.name).join(" + ")}</div>
             <div>{workDescription}</div>
             <div className="text-xs text-stone-500"><MapPin className="inline w-3.5 h-3.5"/> {flat}, {block}, {apartmentName}, {locality}</div>
             <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate}</div>
@@ -255,7 +269,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             </div>
             <div className="border-t border-stone-200 pt-3 flex justify-between gap-3"><span className="font-bold">{needsAdminCallback ? 'Final total' : 'Estimated total'}</span><b>{needsAdminCallback ? 'To be confirmed' : `₹${suggestedPrice}`}</b></div>
             <p className="text-xs text-stone-500">{needsAdminCallback ? 'Our admin team will call to understand the custom-quote service(s). Prices shown for other selected services are estimates; Zuno will confirm the final total.' : 'Each selected service is priced separately, and the estimated total is their sum. Final price may be agreed with the helper.'}</p>
-            {(category === 'organisation' || category === 'family') ? <div className="mt-3 space-y-3"><p className="text-sm text-stone-600">No price is charged or quoted at this step. Our admin team will call you to collect details and confirm the price.</p><button type="button" onClick={buildBooking} className="w-full p-3 rounded-xl bg-orange-600 text-white font-bold">Request admin callback</button></div> : <>{counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
+            {needsAdminCallback ? <div className="mt-3 space-y-3"><p className="text-sm text-stone-600">No price is charged or quoted at this step. Our admin team will call you to collect details and confirm the price.</p><button type="button" onClick={buildBooking} className="w-full p-3 rounded-xl bg-orange-600 text-white font-bold">Request admin callback</button></div> : <>{counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
             <div className="mt-3 flex gap-2">
               <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
               <button
@@ -283,7 +297,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     block,
                     flat,
                     customerNotes: notes,
-                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: needsAdminCallback },
                     customerOfferPrice: n,
                     negotiatedAgreedPrice: n,
                     priceNegotiationStatus: 'pending_helper',
