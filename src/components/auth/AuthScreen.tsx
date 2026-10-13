@@ -26,7 +26,10 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
-  const [roleTab, setRoleTab] = useState<AuthRole>('customer');
+  // Keep customer, helper, and admin entry points separate by URL.
+  const entryPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const entryRole: AuthRole = entryPath === '/helper' ? 'helper' : entryPath === '/admin' ? 'admin' : 'customer';
+  const [roleTab, setRoleTab] = useState<AuthRole>(entryRole);
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
 
   // Customer email/password authentication and profile inputs
@@ -248,64 +251,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Role Selection Tabs */}
-        <div className="p-4 border-b border-stone-100 bg-stone-50">
-          <div className="text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-2 text-center">
-            Sign In As:
-          </div>
-          <div className="grid grid-cols-3 p-1.5 bg-stone-200/70 rounded-2xl gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('customer');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'customer'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Customer</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('helper');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'helper'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <HeartHandshake className="w-4 h-4" />
-              <span>Helper</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('admin');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'admin'
-                  ? 'bg-stone-900 text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Admin</span>
-            </button>
-          </div>
-        </div>
+        {/* Customer sees only the customer sign-in. Staff use their separate /helper and /admin entry points. */}
+        {entryRole === 'customer' && <div className="px-6 py-4 border-b border-stone-100 bg-stone-50 text-center"><div className="inline-flex items-center gap-2 rounded-full bg-orange-50 border border-orange-100 px-4 py-2 text-sm font-bold text-orange-700"><User className="w-4 h-4" /> Customer Account</div></div>}
+        {entryRole !== 'customer' && <div className="px-6 py-4 border-b border-stone-100 bg-stone-50 text-center"><div className="text-sm font-bold text-stone-800">{entryRole === 'helper' ? 'Helper Partner Portal' : 'ZUNO Admin Portal'}</div><a href="/" className="text-xs text-orange-600 underline mt-1 inline-block">Customer app</a></div>}
 
         {/* Content Body */}
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
