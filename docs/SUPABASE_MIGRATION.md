@@ -6,10 +6,10 @@ This branch introduces the Supabase client configuration without changing the ex
 
 Set these variables in Vercel for the **Preview** deployment of `production/supabase-integration`:
 
-- `VITE_SUPABASE_URL`: the Project URL from Supabase.
-- `VITE_SUPABASE_PUBLISHABLE_KEY`: the project's publishable key.
+- `SUPABASE_URL`: the Project URL from Supabase.
+- `PUBLISHABLE_KEY`: the project's publishable key.
 
-Then redeploy the Preview. These are browser-visible project settings, not secrets. Never set a database password, Supabase secret key, or `service_role` key under a `VITE_*` name or commit them to Git.
+The Vite configuration passes only these two explicitly named values into browser code. Other environment variables—including Supabase secret keys—are not exposed by this configuration. Never commit a database password, Supabase secret key, or `service_role` key to Git.
 
 For local development, copy `.env.example` to `.env.local` and replace the two Supabase placeholders. Do not commit `.env.local`.
 
