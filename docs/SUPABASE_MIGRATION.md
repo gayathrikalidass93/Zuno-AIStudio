@@ -1,6 +1,6 @@
 # Supabase integration — staged migration
 
-This branch introduces the Supabase client configuration without changing the existing marketplace data flow yet. The app currently uses browser localStorage; switching reads/writes before the database schema, authentication, and row-level security are ready could lose or expose booking data.
+This branch stages Supabase integration. Customer email/password authentication now uses Supabase Auth and creates/loads the signed-in customer's profile in `public.customers`. The wider marketplace data flow (bookings, helpers, quotes, support, and audit data) still uses browser localStorage; do not treat those records as cloud-synchronised yet.
 
 ## Configure environment variables
 
@@ -19,9 +19,11 @@ For local development, copy `.env.example` to `.env.local` and replace the two S
 - [x] Add an optional browser client in `src/services/supabase.ts`.
 - [x] Document the required environment variables.
 - [ ] Design and apply the database schema for the existing Zuno types.
-- [ ] Add Supabase Auth and role provisioning.
+- [x] Add customer email/password authentication using Supabase Auth.
+- [x] Load/create the signed-in customer's profile in `public.customers` using the authenticated UUID.
+- [ ] Replace demo helper/admin sign-in with secure role provisioning.
 - [ ] Configure and verify row-level security policies.
 - [ ] Migrate booking, helper, customer, quote, support, and audit data access.
 - [ ] Test existing flows before any production deployment.
 
-The Supabase client is deliberately optional while the migration is staged. The existing localStorage app remains the active data path until the remaining checklist is implemented and tested.
+The Supabase client is deliberately optional while the migration is staged. Customer authentication requires valid `SUPABASE_URL` and `PUBLISHABLE_KEY` values. If email confirmation is enabled, new customers must confirm the email first, then sign in so their profile can be created. Existing marketplace bookings and operational data remain localStorage-only until the remaining checklist is implemented and tested.
