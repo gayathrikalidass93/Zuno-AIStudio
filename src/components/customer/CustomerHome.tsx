@@ -12,6 +12,7 @@ interface Props {
   onBookAgain: (booking: Booking) => void;
   onViewBookingDetails: (bookingId: string) => void;
   onToggleFavourite: (helperId: string) => void;
+  onAcceptAdminQuote: (bookingId: string, customerId: string) => boolean;
   onLogout?: () => void;
   onOpenAuth?: () => void;
 }
@@ -25,7 +26,7 @@ const SERVICES = [
   { id: 'family', icon: '👨‍👩‍👧', name: 'Family Assistance' },
 ] as const;
 
-export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, lastCreatedBookingId, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onLogout }) => {
+export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, lastCreatedBookingId, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onAcceptAdminQuote, onLogout }) => {
   const [tab, setTab] = useState<'home'|'bookings'|'profile'>('home');
   const [bookingTab, setBookingTab] = useState<'pending'|'upcoming'|'active'|'history'>('pending');
   const [language, setLanguage] = useState(customer.preferredLanguage || 'English');
@@ -43,7 +44,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
   // Keep unassigned requests and price negotiation responses visible in Pending.
-  const pending = myBookings.filter(b => b.status !== 'cancelled' && (b.status === 'requested' || ['pending_helper','countered'].includes(b.priceNegotiationStatus || '')));
+  const pending = myBookings.filter(b => b.status !== 'cancelled' && (b.status === 'requested' || ['admin_quote_needed','customer_pending_admin_quote','pending_helper','countered'].includes(b.priceNegotiationStatus || '')));
   const upcoming = myBookings.filter(b => b.status !== 'cancelled' && (b.priceNegotiationStatus === 'declined' || ['confirmed','helper_assigned','replacement_required'].includes(b.status)));
   const active = myBookings.filter(b => ['on_the_way','started'].includes(b.status));
   const history = myBookings.filter(b => ['completed','cancelled'].includes(b.status));
@@ -60,7 +61,11 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
   };
 
   const list = bookingTab === 'pending' ? pending : bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
-  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper'
+  const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'admin_quote_needed'
+    ? 'Zuno is reviewing your request and preparing a price.'
+    : b.priceNegotiationStatus === 'customer_pending_admin_quote'
+      ? `Admin quote ₹${b.customerOfferPrice} · Your approval needed`
+      : b.priceNegotiationStatus === 'pending_helper'
     ? (b.helperId ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : `Finding a helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} saved`)
     : b.priceNegotiationStatus === 'countered'
       ? `Helper countered at ₹${b.helperCounterPrice}. Awaiting your response.`
@@ -125,7 +130,11 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
                 <div className="text-xs text-stone-500 mt-1">{b.scheduledDate || 'Work date'} · {b.locality}</div>
               </div>
               <span className="text-[10px] font-bold uppercase text-orange-700">
-                {b.priceNegotiationStatus === 'pending_helper'
+                {b.priceNegotiationStatus === 'admin_quote_needed'
+                  ? 'Awaiting Admin Price'
+                  : b.priceNegotiationStatus === 'customer_pending_admin_quote'
+                    ? 'Approve Price'
+                    : b.priceNegotiationStatus === 'pending_helper'
                   ? (b.helperId ? 'Pending from Helper' : 'Finding a Helper')
                   : b.priceNegotiationStatus === 'countered'
                     ? 'Helper Countered'
@@ -181,6 +190,19 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
             {b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
               <div className="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600" onClick={e=>e.stopPropagation()}>
                 <b>Cancelled by you.</b>{b.cancellation.reason && b.cancellation.reason !== 'No comment provided' ? ` Comment: ${b.cancellation.reason}` : ''}
+              </div>
+            )}
+            {b.priceNegotiationStatus === 'admin_quote_needed' && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" onClick={e => e.stopPropagation()}>
+                <div className="font-bold">Waiting for Zuno to confirm your price</div>
+                <div className="mt-1">Your request will not be sent to helpers until you review and accept the final price.</div>
+              </div>
+            )}
+            {b.priceNegotiationStatus === 'customer_pending_admin_quote' && (
+              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3" onClick={e => e.stopPropagation()}>
+                <div className="text-xs font-bold text-emerald-900">Zuno's proposed price: ₹{b.customerOfferPrice}</div>
+                <div className="mt-1 text-[11px] text-emerald-800">Please accept this price before we send your request to eligible helpers.</div>
+                <button onClick={() => onAcceptAdminQuote(b.id, customer.id)} className="mt-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">Accept price & find helper</button>
               </div>
             )}
             {b.priceNegotiationStatus === 'countered' && (
