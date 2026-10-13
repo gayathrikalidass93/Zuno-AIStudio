@@ -787,7 +787,14 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                           <td className="p-3">
                             {helper ? (
                               <div className="space-y-1">
-                                <div className="font-medium text-stone-900">{helper.name}</div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="font-medium text-stone-900">{helper.name}</span>
+                                  {helper.availabilityStatus === 'off_duty' && (
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                                      Off duty
+                                    </span>
+                                  )}
+                                </div>
                                 {helper.phone && (
                                   <a
                                     href={`tel:${helper.phone.replace(/[^+\d]/g, '')}`}
@@ -1095,6 +1102,15 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-sm text-stone-900">{h.name}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              h.availabilityStatus === 'off_duty'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-stone-100 text-stone-700'
+                            }`}
+                          >
+                            {h.availabilityStatus === 'off_duty' ? 'Off duty' : h.availabilityStatus.replace(/_/g, ' ')}
+                          </span>
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                               h.verificationStatus === 'verified'
