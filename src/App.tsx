@@ -190,6 +190,7 @@ export default function App() {
             onBookAgain={handleBookAgain}
             onViewBookingDetails={(id) => setActiveBookingModalId(id)}
             onToggleFavourite={handleToggleFavourite}
+            onAcceptAdminQuote={(bookingId, customerId) => db.acceptAdminQuote(bookingId, customerId)}
             onLogout={handleLogout}
             onOpenAuth={handleLogout}
           />
@@ -235,6 +236,7 @@ export default function App() {
             onImportHelpers={(newH) => db.importHelpers(newH)}
             onImportApartments={(newA) => db.importApartments(newA)}
             onAdminReassignBooking={(bookingId, helperId) => db.adminReassignBooking(bookingId, helperId)}
+            onSubmitAdminQuote={(bookingId, price) => db.submitAdminQuote(bookingId, price)}
           />
         )}
       </main>
