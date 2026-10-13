@@ -229,7 +229,7 @@ export default function App() {
 
   // The customer app is the default route. Helper and admin portals are opened only
   // from their separate /helper and /admin URLs, not from the customer sign-in screen.
-  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const routeRole: AuthRole = currentPath === '/helper' ? 'helper' : currentPath === '/admin' ? 'admin' : 'customer';
   if (session && session.role !== routeRole) {
     return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
