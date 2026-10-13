@@ -62,6 +62,7 @@ interface AdminControlTowerProps {
   onImportHelpers: (newHelpers: Helper[]) => void;
   onImportApartments: (newApartments: Apartment[]) => void;
   onAdminReassignBooking: (bookingId: string, helperId: string) => boolean;
+  onSubmitAdminQuote: (bookingId: string, price: number) => boolean;
 }
 
 export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
@@ -82,6 +83,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
   onImportHelpers,
   onImportApartments,
   onAdminReassignBooking,
+  onSubmitAdminQuote,
 }) => {
   const [activeTab, setActiveTab] = useState<
     | 'dashboard'
@@ -102,6 +104,8 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [replacementSelections, setReplacementSelections] = useState<Record<string, string>>({});
   const [reassignmentNotice, setReassignmentNotice] = useState<string | null>(null);
+  const [adminQuoteDrafts, setAdminQuoteDrafts] = useState<Record<string, string>>({});
+  const [adminQuoteNotice, setAdminQuoteNotice] = useState<string | null>(null);
 
   // Pricing Form State
   const [tempPricing, setTempPricing] = useState<PricingConfig>(pricingConfig);
@@ -785,8 +789,16 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             </div>
                             {(b.category === 'organisation' || b.category === 'family') && (
                               <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1.5">
-                                <div className="font-bold text-[10px] text-amber-900">Admin follow-up required · Confirm price</div>
+                                <div className="font-bold text-[10px] text-amber-900">{b.priceNegotiationStatus === 'customer_pending_admin_quote' ? `Quote sent · ₹${b.customerOfferPrice} · Awaiting customer approval` : b.priceNegotiationStatus === 'pending_helper' || b.priceNegotiationStatus === 'accepted' ? 'Customer accepted price · Helper matching started' : 'Admin follow-up required · Set price'}</div>
                                 {b.customerNotes && <div className="text-[10px] text-stone-700">Request: {b.customerNotes}</div>}
+                                {b.priceNegotiationStatus === 'admin_quote_needed' && (
+                                  <form className="flex gap-1.5" onSubmit={(e) => { e.preventDefault(); const price = Number(adminQuoteDrafts[b.id]); if (Number.isFinite(price) && price > 0 && onSubmitAdminQuote(b.id, price)) { setAdminQuoteNotice(`Price ₹${price} sent to customer for ${b.bookingCode}.`); setAdminQuoteDrafts(prev => ({ ...prev, [b.id]: '' })); } }}>
+                                    <label className="sr-only" htmlFor={`admin-quote-${b.id}`}>Enter final price in rupees</label>
+                                    <input id={`admin-quote-${b.id}`} type="number" min="1" step="1" required value={adminQuoteDrafts[b.id] || ''} onChange={e => setAdminQuoteDrafts(prev => ({ ...prev, [b.id]: e.target.value }))} placeholder="Final price ₹" className="min-w-0 w-28 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px]" />
+                                    <button type="submit" className="rounded-md bg-amber-700 px-2 py-1 text-[10px] font-bold text-white">Send price</button>
+                                  </form>
+                                )}
+                                {adminQuoteNotice && <div className="text-[10px] text-emerald-700">{adminQuoteNotice}</div>}
                                 {customer?.phone && (
                                   <div className="flex flex-wrap gap-1.5">
                                     <a
