@@ -975,7 +975,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                   className="w-full p-2 rounded-lg border border-stone-200 bg-white text-[11px]"
                                 >
                                   <option value="">Choose verified helper…</option>
-                                  {helpers.filter((h) => h.id !== b.helperId && h.isActive && h.verificationStatus === 'verified').map((h) => (
+                                  {helpers.filter((h) => h.id !== b.helperId && h.isActive && h.verificationStatus === 'verified' && h.availabilityStatus !== 'off_duty').map((h) => (
                                     <option key={h.id} value={h.id}>{h.name} · {h.locality} · ₹{h.hourlyRate}/hr</option>
                                   ))}
                                 </select>
