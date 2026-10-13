@@ -220,6 +220,9 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
               {activeBookings.map((item) => {
                 const isAssigned = item.helperId === helper.id;
                 const isInvitation = !item.helperId && (item.candidateHelperIds || []).includes(helper.id);
+                const selectedCategories = new Set(item.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.category));
+                const hasCleaningTask = selectedCategories.has('cleaning');
+                const hasBathroomCleaningTask = selectedCategories.has('bathroom_cleaning');
                 const serviceNames = item.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id);
                 return (
                   <button
@@ -235,19 +238,19 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-600 mt-1">Booking {item.bookingCode} · {item.scheduledDate}</div>
-                    {item.workScopeBreakdown?.homeCleaning?.broomingMopping && (
+                    {hasCleaningTask && item.workScopeBreakdown?.homeCleaning?.broomingMopping && (
                       <div className="text-[11px] text-stone-700 mt-1">
                         🧹 Brooming & Mopping: {item.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · {item.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · {item.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls
                         {item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}
                       </div>
                     )}
-                    {(item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms) != null && (
+                    {hasBathroomCleaningTask && (item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms) != null && (
                       <div className="text-[11px] text-cyan-800 mt-1">
                         🚿 Bathrooms: {item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms}
                         {item.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${item.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}
                       </div>
                     )}
-                    {!item.workScopeBreakdown?.homeCleaning?.broomingMopping && item.workScope && (item.workScope.bedrooms != null || item.workScope.halls != null || item.workScope.kitchens != null) && (
+                    {hasCleaningTask && !item.workScopeBreakdown?.homeCleaning?.broomingMopping && item.workScope && (item.workScope.bedrooms != null || item.workScope.halls != null || item.workScope.kitchens != null) && (
                       <div className="text-[11px] text-stone-700 mt-1">
                         🧹 Brooming & Mopping: {item.workScope.bedrooms ?? 0} bedrooms · {item.workScope.kitchens ?? 0} kitchens · {item.workScope.halls ?? 0} halls
                       </div>
@@ -375,21 +378,23 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
                 <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
                   <div className="text-xs font-bold text-stone-800">Work scope</div>
-                  {booking.workScope ? (
-                    <div className="text-[11px] text-stone-600 mt-1 space-y-0.5">
-                      {'bedrooms' in booking.workScope && <div>Bedrooms: {booking.workScope.bedrooms}</div>}
-                      {'halls' in booking.workScope && <div>Halls / living rooms: {booking.workScope.halls}</div>}
-                      {'kitchens' in booking.workScope && <div>Kitchens: {booking.workScope.kitchens}</div>}
-                      {'bathrooms' in booking.workScope && <div>Bathrooms: {booking.workScope.bathrooms}</div>}
-                      {'cleaningType' in booking.workScope && <div>Cleaning: {booking.workScope.cleaningType}</div>}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-stone-500 mt-1">
-                      {booking.tasks
-                        .map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id)
-                        .join(', ')}
-                    </div>
-                  )}
+                  <div className="text-[11px] text-stone-600 mt-1 space-y-0.5">
+                    {booking.tasks.map((id) => {
+                      const task = MASTER_TASKS.find((item) => item.id === id);
+                      if (!task) return <div key={id}>{id.replace(/_/g, ' ')}</div>;
+                      if (task.category === 'cleaning') {
+                        const scope = booking.workScopeBreakdown?.homeCleaning?.broomingMopping;
+                        if (scope) return <div key={id}>Brooming &amp; Mopping: {scope.bedrooms} bedrooms · {scope.kitchens} kitchens · {scope.halls} halls{scope.otherFloorAreas ? ` · ${scope.otherFloorAreas} other areas` : ''}</div>;
+                        if (booking.workScope && ('bedrooms' in booking.workScope || 'kitchens' in booking.workScope || 'halls' in booking.workScope)) return <div key={id}>Brooming &amp; Mopping: {booking.workScope.bedrooms ?? 0} bedrooms · {booking.workScope.kitchens ?? 0} kitchens · {booking.workScope.halls ?? 0} halls</div>;
+                        return <div key={id}>{task.name}</div>;
+                      }
+                      if (task.category === 'bathroom_cleaning') {
+                        const count = booking.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? booking.workScope?.bathrooms;
+                        return <div key={id}>Bathroom Cleaning{count != null ? `: ${count} bathroom(s)` : ''}{booking.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${booking.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}</div>;
+                      }
+                      return <div key={id}>{task.name}{task.description ? `: ${task.description}` : ''}</div>;
+                    })}
+                  </div>
                 </div>
 
                 {booking.status !== 'completed' && booking.status !== 'cancelled' && (
