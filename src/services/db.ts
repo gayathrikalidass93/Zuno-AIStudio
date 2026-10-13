@@ -426,6 +426,22 @@ export const db = {
     return newCustomer;
   },
 
+  upsertAuthenticatedCustomer(customer: Customer): Customer {
+    const index = state.customers.findIndex((existing) => existing.id === customer.id);
+    if (index >= 0) {
+      state.customers[index] = {
+        ...state.customers[index],
+        ...customer,
+        preferences: { ...state.customers[index].preferences, ...customer.preferences },
+      };
+    } else {
+      state.customers.push(customer);
+    }
+    state.activeCustomerId = customer.id;
+    saveState();
+    return state.customers.find((item) => item.id === customer.id)!;
+  },
+
   updateCustomerLanguage(customerId: string, language: string) {
     const cust = state.customers.find((c) => c.id === customerId);
     if (!cust) return;
