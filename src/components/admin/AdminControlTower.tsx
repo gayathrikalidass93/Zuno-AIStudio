@@ -787,7 +787,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             <div className="text-[11px] text-stone-500">
                               {b.apartmentName} · {b.locality}
                             </div>
-                            {(b.category === 'organisation' || b.category === 'family') && (
+                            {(b.workScope?.adminCallbackRequired || b.category === 'organisation' || b.category === 'family') && (
                               <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1.5">
                                 <div className="font-bold text-[10px] text-amber-900">{b.priceNegotiationStatus === 'customer_pending_admin_quote' ? `Quote sent · ₹${b.customerOfferPrice} · Awaiting customer approval` : b.priceNegotiationStatus === 'pending_helper' || b.priceNegotiationStatus === 'accepted' ? 'Customer accepted price · Helper matching started' : 'Admin follow-up required · Set price'}</div>
                                 {b.customerNotes && <div className="text-[10px] text-stone-700">Request: {b.customerNotes}</div>}
