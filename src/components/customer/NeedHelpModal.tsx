@@ -80,7 +80,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     return 300;
   };
 
-  const suggestedPrice = useMemo(() => selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms, cookingMembers, laundryMethod, laundryClothes]);
+  const needsAdminCallback = selectedCategories.some(service => service === 'organisation' || service === 'family');
+  const suggestedPrice = useMemo(() => needsAdminCallback ? 0 : selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms, cookingMembers, laundryMethod, laundryClothes, needsAdminCallback]);
 
   const selectedTaskIds = selectedCategories.map((service) =>
     service === 'cleaning' ? 'clean_sweep' :
@@ -142,7 +143,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       block,
       flat,
       customerNotes: notes,
-      workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: selectedCategories.some(s => s === 'organisation' || s === 'family') },
+      workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: needsAdminCallback },
       customerOfferPrice: finalPrice,
       negotiatedAgreedPrice: finalPrice,
       priceNegotiationStatus: selectedCategories.some(s => s === 'organisation' || s === 'family') ? 'admin_callback_required' : 'pending_helper',
@@ -238,8 +239,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate}</div>
           </div>
           <div className="p-4 rounded-2xl border border-stone-200">
-            <div className="flex justify-between"><span className="font-bold">Suggested price</span><b>₹{suggestedPrice}</b></div>
-            <p className="text-xs text-stone-500 mt-1">Based on the actual work, not hours.</p>
+            <div className="flex justify-between"><span className="font-bold">{needsAdminCallback ? 'Price' : 'Suggested price'}</span><b>{needsAdminCallback ? 'Confirmed by admin' : `₹${suggestedPrice}`}</b></div>
+            <p className="text-xs text-stone-500 mt-1">{needsAdminCallback ? 'Our admin team will call to understand the work and confirm pricing.' : 'Based on the actual work, not hours.'}</p>
             {(category === 'organisation' || category === 'family') ? <div className="mt-3 space-y-3"><p className="text-sm text-stone-600">No price is charged or quoted at this step. Our admin team will call you to collect details and confirm the price.</p><button type="button" onClick={buildBooking} className="w-full p-3 rounded-xl bg-orange-600 text-white font-bold">Request admin callback</button></div> : <>{counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
             <div className="mt-3 flex gap-2">
               <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
