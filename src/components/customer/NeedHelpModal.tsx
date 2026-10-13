@@ -34,6 +34,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const getLocalDateString = (date: Date) => { const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };
   const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
+  const [scheduledSlot, setScheduledSlot] = useState('');
+  const availableTimeSlots = ['8:00 AM - 10:00 AM', '10:00 AM - 12:00 PM', '12:00 PM - 2:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM', '6:00 PM - 8:00 PM'];
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : []);
   const [bedrooms, setBedrooms] = useState(2);
@@ -54,6 +56,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setBlock(customer.block || '');
     setFlat(customer.flat || '');
     setWorkDate(getMinWorkDate());
+    setScheduledSlot('');
     setCategory(preselectedCategory || 'cleaning');
     setSelectedCategories(preselectedCategory ? [preselectedCategory] : []);
     setOffer('');
@@ -121,7 +124,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       category,
       tasks: taskIds,
       scheduledDate: workDate,
-      scheduledSlot: 'Work-specific booking',
+      scheduledSlot,
       durationHours: 1,
       estimatedWorkloadMinutes: 0,
       isUrgent: false,
@@ -174,10 +177,11 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
         </div>}
 
         {step === 2 && <div className="space-y-4">
-          <h2 className="font-black text-xl">Choose work date</h2>
-          <p className="text-sm text-stone-500">Helpers are matched by the work requested, not by time slots.</p>
-          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
-          <button disabled={workDate < getMinWorkDate()} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
+          <h2 className="font-black text-xl">Choose date & time</h2>
+          <p className="text-sm text-stone-500">When would you like the helper to arrive? Choose your preferred two-hour slot.</p>
+          <label className="block text-xs font-bold">Date<input type="date" min={getMinWorkDate()} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <div className="space-y-2"><div className="text-xs font-bold">Preferred arrival time</div><div className="grid grid-cols-2 gap-2">{availableTimeSlots.map(slot => <button key={slot} type="button" onClick={() => setScheduledSlot(slot)} className={`p-3 rounded-xl border text-sm font-semibold ${scheduledSlot === slot ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-stone-200 hover:border-stone-400'}`}>{slot}</button>)}</div></div>
+          <button disabled={workDate < getMinWorkDate() || !scheduledSlot} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
         {step === 3 && <div className="space-y-4">
