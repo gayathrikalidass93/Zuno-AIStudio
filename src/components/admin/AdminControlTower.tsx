@@ -783,6 +783,30 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             <div className="text-[11px] text-stone-500">
                               {b.apartmentName} · {b.locality}
                             </div>
+                            {(b.category === 'organisation' || b.category === 'family') && (
+                              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1.5">
+                                <div className="font-bold text-[10px] text-amber-900">Admin follow-up required · Confirm price</div>
+                                {b.customerNotes && <div className="text-[10px] text-stone-700">Request: {b.customerNotes}</div>}
+                                {customer?.phone && (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <a
+                                      href={`tel:${customer.phone.replace(/[^+\d]/g, '')}`}
+                                      className="inline-flex items-center rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                                    >
+                                      Call customer
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/${customer.phone.replace(/\D/g, '').replace(/^0/, '91')}?text=${encodeURIComponent(`Hi ${customer.name}, this is Zuno. We received your ${b.category === 'organisation' ? 'Home Organisation' : 'Family Assistance'} request (Booking ${b.bookingCode}). Our team will contact you to understand the work and confirm pricing.`)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center rounded-md bg-green-700 px-2 py-1 text-[10px] font-bold text-white hover:bg-green-800"
+                                    >
+                                      WhatsApp customer
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3">
                             {helper ? (
