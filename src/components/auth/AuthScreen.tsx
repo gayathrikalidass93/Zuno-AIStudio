@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../../services/db';
 import { Customer, Helper, AuthRole } from '../../types';
 import { CHENNAI_LOCALITIES } from '../../data/services';
+import { supabase } from '../../services/supabase';
 import {
   User,
   HeartHandshake,
@@ -28,10 +29,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [roleTab, setRoleTab] = useState<AuthRole>('customer');
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
 
-  // Customer form inputs
+  // Customer email/password authentication and profile inputs
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
   const [regLocality, setRegLocality] = useState<string>(CHENNAI_LOCALITIES[1] || 'Chromepet');
   const [regApartment, setRegApartment] = useState('ZUNO Residency');
   const [regBlock, setRegBlock] = useState('A');
@@ -42,87 +44,143 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const state = db.getState();
   const availableHelpers = state.helpers;
 
-  // Handle Customer Login
-  const handleCustomerLogin = (e?: React.FormEvent, directPhone?: string) => {
-    if (e) e.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const completeCustomerLogin = async (user: { id: string; email?: string; user_metadata?: Record<string, any> }) => {
+    if (!supabase) throw new Error('Supabase is not configured yet. Please check the Vercel environment variables.');
 
-    const phoneToTest = (directPhone !== undefined ? directPhone : phoneInput).trim();
-    if (!phoneToTest) {
-      setError('Please enter a valid mobile number');
-      return;
+    const { data: existingProfile, error: profileError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+
+    let profile = existingProfile;
+    if (!profile) {
+      const metadata = user.user_metadata || {};
+      const { data: createdProfile, error: createError } = await supabase
+        .from('customers')
+        .insert({
+          id: user.id,
+          name: String(metadata.name || ''),
+          phone: String(metadata.phone || ''),
+          email: user.email || '',
+          locality: String(metadata.locality || CHENNAI_LOCALITIES[1] || 'Chennai'),
+          apartment_name: String(metadata.apartment_name || ''),
+          block: String(metadata.block || ''),
+          flat: String(metadata.flat || ''),
+          preferred_language: 'English',
+          preferences: { dietary: 'Standard home cooked', petInHouse: false, elderFriendly: false, kidsFriendly: false },
+          favourite_helper_ids: [],
+        })
+        .select('*')
+        .single();
+      if (createError) throw createError;
+      profile = createdProfile;
     }
 
-    const cleanDigits = phoneToTest.replace(/\D/g, '');
-    const found = state.customers.find((c) => {
-      const cDigits = c.phone.replace(/\D/g, '');
-      return cDigits.endsWith(cleanDigits) || cleanDigits.endsWith(cDigits);
-    });
+    const customer: Customer = {
+      id: profile.id,
+      name: profile.name || '',
+      phone: profile.phone || '',
+      email: profile.email || user.email || '',
+      locality: profile.locality || '',
+      apartmentName: profile.apartment_name || '',
+      block: profile.block || '',
+      flat: profile.flat || '',
+      preferredLanguage: profile.preferred_language || 'English',
+      preferences: {
+        dietary: profile.preferences?.dietary || 'Standard home cooked',
+        allergies: profile.preferences?.allergies,
+        elderFriendly: profile.preferences?.elderFriendly ?? false,
+        kidsFriendly: profile.preferences?.kidsFriendly ?? false,
+        petInHouse: profile.preferences?.petInHouse ?? false,
+      },
+      favouriteHelperIds: profile.favourite_helper_ids || [],
+      createdAt: profile.created_at || new Date().toISOString(),
+    };
 
-    if (found) {
-      db.setSession({
-        role: 'customer',
-        userId: found.id,
-        userName: found.name,
-        phone: found.phone,
-      });
-      setSuccess(`Welcome back, ${found.name}! Logging you in...`);
-      setTimeout(() => {
-        onLoginSuccess('customer', found.id);
-      }, 300);
-    } else {
-      setPhoneInput(phoneToTest);
-      setCustomerMode('register');
-      setError('No customer account found for this phone number. Please register your details below.');
-    }
+    db.upsertAuthenticatedCustomer(customer);
+    db.setSession({ role: 'customer', userId: customer.id, userName: customer.name || customer.email, phone: customer.phone });
+    onLoginSuccess('customer', customer.id);
   };
 
-  // Handle Customer Registration
-  const handleCustomerRegister = (e: React.FormEvent) => {
+  const handleCustomerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    if (!supabase) {
+      setError('Supabase is not configured. Please check SUPABASE_URL and PUBLISHABLE_KEY in Vercel.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+      if (signInError) throw signInError;
+      if (!data.user) throw new Error('Sign in did not return a user. Please try again.');
+      await completeCustomerLogin(data.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  const handleCustomerRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    if (!supabase) {
+      setError('Supabase is not configured. Please check SUPABASE_URL and PUBLISHABLE_KEY in Vercel.');
+      return;
+    }
     if (!regName.trim()) {
-      setError('Please provide your name');
+      setError('Please provide your name.');
       return;
     }
-    if (!phoneInput.trim()) {
-      setError('Please provide your mobile number');
+    if (authPassword.length < 8) {
+      setError('Please use a password with at least 8 characters.');
       return;
     }
 
-    const formattedPhone = phoneInput.trim().startsWith('+91')
-      ? phoneInput.trim()
-      : `+91 ${phoneInput.trim()}`;
+    setIsSubmitting(true);
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            name: regName.trim(),
+            phone: phoneInput.trim(),
+            locality: regLocality,
+            apartment_name: regApartment.trim(),
+            block: regBlock.trim(),
+            flat: regFlat.trim(),
+          },
+        },
+      });
+      if (signUpError) throw signUpError;
 
-    // Create stable new customer
-    const newCustomer = db.registerCustomer({
-      name: regName.trim(),
-      phone: formattedPhone,
-      email: regEmail.trim() || `${regName.toLowerCase().replace(/\s+/g, '')}@zuno.example`,
-      locality: regLocality,
-      apartmentName: regApartment.trim() || 'ZUNO Residency',
-      block: regBlock.trim() || 'A',
-      flat: regFlat.trim() || '402',
-      preferredLanguage: 'English / Tamil',
-      preferences: {
-        dietary: 'Standard home cooked',
-        petInHouse: false,
-        elderFriendly: false,
-        kidsFriendly: false,
-      },
-    });
-
-    setSuccess(`Account created for ${newCustomer.name}! Welcome to ZUNO.`);
-    setTimeout(() => {
-      onLoginSuccess('customer', newCustomer.id);
-    }, 300);
+      if (data.session && data.user) {
+        await completeCustomerLogin(data.user);
+      } else {
+        setCustomerMode('login');
+        setSuccess('Account created. Check your email for the verification link, then return here and sign in.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create your account. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Handle Helper Login
@@ -269,185 +327,95 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           {roleTab === 'customer' && (
             <div className="space-y-4">
               {customerMode === 'login' ? (
-                <form onSubmit={(e) => handleCustomerLogin(e)} className="space-y-4">
+                <form onSubmit={handleCustomerLogin} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-                      Mobile Number
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-500 font-semibold text-sm">
-                        +91
-                      </div>
-                      <input
-                        type="tel"
-                        value={phoneInput}
-                        onChange={(e) => setPhoneInput(e.target.value)}
-                        placeholder="90000 00002 or 98405 12099"
-                        className="w-full pl-13 pr-3.5 py-3 rounded-2xl border border-stone-300 font-mono text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                        autoFocus
-                      />
-                    </div>
+                    <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-3.5 py-3 rounded-2xl border border-stone-300 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                      autoFocus
+                    />
                   </div>
-
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Password</label>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full px-3.5 py-3 rounded-2xl border border-stone-300 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    />
+                  </div>
                   <button
                     type="submit"
-                    className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <LogIn className="w-4 h-4" />
-                    <span>Sign In to Customer App</span>
+                    <span>{isSubmitting ? 'Signing in…' : 'Sign In to Customer App'}</span>
                   </button>
-
-                  {/* 1-Click QA Synthetic Test Setup */}
-                  <div className="pt-2 border-t border-stone-200 space-y-2">
-                    <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                      Quick Start Test Accounts:
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPhoneInput('+91 90000 00002');
-                        setRegName('Test Customer Kavitha Flow');
-                        setRegLocality('Chromepet');
-                        setRegApartment('ZUNO Residency');
-                        setRegBlock('A');
-                        setRegFlat('402');
-                        setRegEmail('customer.kavitha.flow@zuno.example');
-                        setCustomerMode('register');
-                      }}
-                      className="w-full p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-left text-xs font-semibold text-orange-950 flex items-center justify-between transition-colors"
-                    >
-                      <div>
-                        <div>⚡ New Test Customer (Chromepet, A-402)</div>
-                        <div className="text-[10px] text-stone-500 font-mono">+91 90000 00002</div>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-200 text-orange-900">
-                        Select &rarr;
-                      </span>
-                    </button>
-                  </div>
-
                   <div className="text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setCustomerMode('register');
-                      }}
-                      className="text-xs text-orange-600 hover:underline font-bold"
-                    >
-                      New Customer? Register once here &rarr;
+                    <button type="button" onClick={() => { setError(null); setSuccess(null); setCustomerMode('register'); }} className="text-xs text-orange-600 hover:underline font-bold">
+                      New Customer? Create an account →
                     </button>
                   </div>
                 </form>
               ) : (
                 <form onSubmit={handleCustomerRegister} className="space-y-3 text-xs">
                   <div className="font-bold text-stone-900 text-sm border-b border-stone-200 pb-2 flex items-center justify-between">
-                    <span>One-Time Customer Registration</span>
-                    <button
-                      type="button"
-                      onClick={() => setCustomerMode('login')}
-                      className="text-xs text-orange-600 hover:underline font-normal"
-                    >
+                    <span>Create Customer Account</span>
+                    <button type="button" onClick={() => { setError(null); setSuccess(null); setCustomerMode('login'); }} className="text-xs text-orange-600 hover:underline font-normal">
                       Back to Login
                     </button>
                   </div>
-
                   <div className="space-y-1">
                     <label className="font-bold text-stone-700">Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      placeholder="e.g. Test Customer Kavitha Flow"
-                      className="w-full p-2.5 rounded-xl border border-stone-300 font-medium text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                    />
+                    <input type="text" required value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Your full name" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
                   </div>
-
                   <div className="space-y-1">
-                    <label className="font-bold text-stone-700">Mobile Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      placeholder="+91 90000 00002"
-                      className="w-full p-2.5 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                    />
+                    <label className="font-bold text-stone-700">Email Address *</label>
+                    <input type="email" required autoComplete="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="you@example.com" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
                   </div>
-
+                  <div className="space-y-1">
+                    <label className="font-bold text-stone-700">Password * (at least 8 characters)</label>
+                    <input type="password" required minLength={8} autoComplete="new-password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Create a password" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-stone-700">Mobile Number</label>
+                    <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} placeholder="+91 98765 43210" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="font-bold text-stone-700">Area / Locality *</label>
-                      <select
-                        value={regLocality}
-                        onChange={(e) => setRegLocality(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                      >
-                        {CHENNAI_LOCALITIES.map((loc) => (
-                          <option key={loc} value={loc}>
-                            {loc}
-                          </option>
-                        ))}
+                      <select required value={regLocality} onChange={(e) => setRegLocality(e.target.value)} className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        {CHENNAI_LOCALITIES.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
                       </select>
                     </div>
-
                     <div className="space-y-1">
-                      <label className="font-bold text-stone-700">Apartment *</label>
-                      <input
-                        type="text"
-                        required
-                        value={regApartment}
-                        onChange={(e) => setRegApartment(e.target.value)}
-                        placeholder="ZUNO Residency"
-                        className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                      />
+                      <label className="font-bold text-stone-700">Apartment</label>
+                      <input type="text" value={regApartment} onChange={(e) => setRegApartment(e.target.value)} placeholder="Apartment name" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="font-bold text-stone-700">Block *</label>
-                      <input
-                        type="text"
-                        required
-                        value={regBlock}
-                        onChange={(e) => setRegBlock(e.target.value)}
-                        placeholder="A"
-                        className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                      />
+                      <label className="font-bold text-stone-700">Block</label>
+                      <input type="text" value={regBlock} onChange={(e) => setRegBlock(e.target.value)} placeholder="A" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
                     </div>
-
                     <div className="space-y-1">
-                      <label className="font-bold text-stone-700">Flat No *</label>
-                      <input
-                        type="text"
-                        required
-                        value={regFlat}
-                        onChange={(e) => setRegFlat(e.target.value)}
-                        placeholder="402"
-                        className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium"
-                      />
+                      <label className="font-bold text-stone-700">Flat No.</label>
+                      <input type="text" value={regFlat} onChange={(e) => setRegFlat(e.target.value)} placeholder="402" className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none" />
                     </div>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-stone-700">Email Address (Optional)</label>
-                    <input
-                      type="email"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="customer.kavitha.flow@zuno.example"
-                      className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 mt-2"
-                  >
+                  <button type="submit" disabled={isSubmitting} className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 mt-2">
                     <UserPlus className="w-4 h-4" />
-                    <span>Create Profile & Enter App</span>
+                    <span>{isSubmitting ? 'Creating account…' : 'Create Account'}</span>
                   </button>
                 </form>
               )}
