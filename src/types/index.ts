@@ -125,8 +125,8 @@ export type BookingStatus =
   | 'cancelled'
   | 'replacement_required';
 
-export type PriceNegotiationStatus = 'pending_helper' | 'accepted' | 'countered' | 'declined';
-export type PaymentStatus = 'not_due' | 'pay_after_arrival_or_completion' | 'paid';
+export type PriceNegotiationStatus = 'admin_quote_needed' | 'customer_pending_admin_quote' | 'pending_helper' | 'accepted' | 'countered' | 'declined';
+export type PaymentStatus = 'not_due' | 'awaiting_admin_quote' | 'pay_after_arrival_or_completion' | 'paid';
 
 export interface BookingPricing {
   baseHourlyRate: number; // Selected helper's asking rate per hour
@@ -149,7 +149,9 @@ export interface Booking {
   helperId?: string;
   /** Eligible helpers notified before one accepts the request. Cleared on assignment. */
   candidateHelperIds?: string[];
-  /** Full history of helpers originally notified, retained after assignment or cancellation. */
+  /** Helpers eligible for a custom service, held back until the customer accepts the admin quote. */
+  eligibleHelperIds?: string[];
+  /** Full history of helpers originally notified, retained after assignment or cancellation.
   notifiedHelperIds?: string[];
   status: BookingStatus;
   tasks: string[]; // Task IDs
@@ -181,6 +183,10 @@ export interface Booking {
     kitchens?: number;
     bathrooms?: number;
     cleaningType?: 'casual' | 'regular';
+    cookingMembers?: number;
+    laundryMethod?: 'machine' | 'hand';
+    laundryClothes?: number;
+    adminCallbackRequired?: boolean;
   };
   timestamps: {
     requestedAt: string;
