@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { db } from './services/db';
+import { supabase } from './services/supabase';
 import { Booking, ServiceCategory, AuthRole, AuthSession, Helper } from './types';
 import { Header } from './components/common/Header';
 import { AuthScreen } from './components/auth/AuthScreen';
@@ -29,6 +30,76 @@ export default function App() {
       setSession(db.getSession());
     });
     return unsub;
+  }, []);
+
+  // Verify persisted customer sessions against Supabase on page reload.
+  // Helper/admin demo sessions remain unchanged during this staged migration.
+  useEffect(() => {
+    let cancelled = false;
+    const restoreCustomerSession = async () => {
+      const storedSession = db.getSession();
+      if (storedSession?.role !== 'customer') return;
+
+      if (!supabase) {
+        db.logout();
+        if (!cancelled) setSession(null);
+        return;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      const authUser = authData.session?.user;
+      if (authError || !authUser) {
+        db.logout();
+        if (!cancelled) setSession(null);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        db.logout();
+        if (!cancelled) setSession(null);
+        return;
+      }
+
+      const customer = {
+        id: profile.id,
+        name: profile.name || '',
+        phone: profile.phone || '',
+        email: profile.email || authUser.email || '',
+        locality: profile.locality || '',
+        apartmentName: profile.apartment_name || '',
+        block: profile.block || '',
+        flat: profile.flat || '',
+        preferredLanguage: profile.preferred_language || 'English',
+        preferences: {
+          dietary: profile.preferences?.dietary || 'Standard home cooked',
+          allergies: profile.preferences?.allergies,
+          elderFriendly: profile.preferences?.elderFriendly ?? false,
+          kidsFriendly: profile.preferences?.kidsFriendly ?? false,
+          petInHouse: profile.preferences?.petInHouse ?? false,
+        },
+        favouriteHelperIds: profile.favourite_helper_ids || [],
+        createdAt: profile.created_at || new Date().toISOString(),
+      };
+      db.upsertAuthenticatedCustomer(customer);
+      db.setSession({
+        role: 'customer',
+        userId: customer.id,
+        userName: customer.name || customer.email,
+        phone: customer.phone,
+      });
+      if (!cancelled) setSession(db.getSession());
+    };
+
+    void restoreCustomerSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Modals state
@@ -117,7 +188,7 @@ export default function App() {
 
   const handleLoginSuccess = (role: AuthRole, userId: string) => {
     if (role === 'customer') {
-      const customer = state.customers.find((c) => c.id === userId);
+      const customer = db.getState().customers.find((c) => c.id === userId);
       if (!customer) return;
       db.setSession({
         role: 'customer',
@@ -147,6 +218,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (supabase) void supabase.auth.signOut();
     db.logout();
     setSession(null);
   };
