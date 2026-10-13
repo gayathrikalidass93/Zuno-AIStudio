@@ -22,7 +22,11 @@ export default function App() {
   const state = useSyncExternalStore(db.subscribe, db.getState);
 
   // Reactive authenticated session
-  const [session, setSession] = useState<AuthSession | null>(() => db.getSession());
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    const storedSession = db.getSession();
+    // Customer access waits for Supabase session validation during startup.
+    return storedSession?.role === 'customer' ? null : storedSession;
+  });
 
   // Listen to any database session / state modifications
   useEffect(() => {
