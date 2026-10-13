@@ -206,6 +206,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             });
           }} className={`p-4 rounded-2xl border text-left ${selectedCategories.includes(s.id)?'border-orange-500 bg-orange-50':'border-stone-200'}`}>
             <div className="text-2xl">{s.icon}</div><div className="font-bold text-sm mt-2">{s.name}</div>
+            <div className="text-sm font-black text-stone-900 mt-2">{s.id === 'organisation' || s.id === 'family' ? 'Custom quote' : `₹${priceForCategory(s.id)}`}</div>
+            <div className="text-[10px] text-stone-500">{s.id === 'organisation' || s.id === 'family' ? 'Price confirmed by Zuno' : 'Estimated price'}</div>
             {selectedCategories.includes(s.id) && <div className="text-[10px] font-bold text-orange-700 mt-1">Selected</div>}
           </button>)}</div>
           <button disabled={!selectedCategories.length} onClick={()=>setStep(4)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
@@ -239,9 +241,20 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             <div className="text-xs text-stone-500"><MapPin className="inline w-3.5 h-3.5"/> {flat}, {block}, {apartmentName}, {locality}</div>
             <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate}</div>
           </div>
-          <div className="p-4 rounded-2xl border border-stone-200">
-            <div className="flex justify-between"><span className="font-bold">{needsAdminCallback ? 'Price' : 'Suggested price'}</span><b>{needsAdminCallback ? 'Confirmed by admin' : `₹${suggestedPrice}`}</b></div>
-            <p className="text-xs text-stone-500 mt-1">{needsAdminCallback ? 'Our admin team will call to understand the work and confirm pricing.' : 'Based on the actual work, not hours.'}</p>
+          <div className="p-4 rounded-2xl border border-stone-200 space-y-3">
+            <h3 className="font-bold">Price breakdown</h3>
+            <div className="space-y-2">
+              {selectedCategories.map((service) => {
+                const item = services.find((entry) => entry.id === service);
+                const customQuote = service === 'organisation' || service === 'family';
+                return <div key={service} className="flex items-start justify-between gap-3 text-sm">
+                  <span>{item?.icon} {item?.name}</span>
+                  <span className="font-bold text-right">{customQuote ? 'Custom quote' : `₹${priceForCategory(service)}`}</span>
+                </div>;
+              })}
+            </div>
+            <div className="border-t border-stone-200 pt-3 flex justify-between gap-3"><span className="font-bold">{needsAdminCallback ? 'Final total' : 'Estimated total'}</span><b>{needsAdminCallback ? 'To be confirmed' : `₹${suggestedPrice}`}</b></div>
+            <p className="text-xs text-stone-500">{needsAdminCallback ? 'Our admin team will call to understand the custom-quote service(s). Prices shown for other selected services are estimates; Zuno will confirm the final total.' : 'Each selected service is priced separately, and the estimated total is their sum. Final price may be agreed with the helper.'}</p>
             {(category === 'organisation' || category === 'family') ? <div className="mt-3 space-y-3"><p className="text-sm text-stone-600">No price is charged or quoted at this step. Our admin team will call you to collect details and confirm the price.</p><button type="button" onClick={buildBooking} className="w-full p-3 rounded-xl bg-orange-600 text-white font-bold">Request admin callback</button></div> : <>{counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
             <div className="mt-3 flex gap-2">
               <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
