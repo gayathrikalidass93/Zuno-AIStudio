@@ -505,10 +505,21 @@ export const db = {
     const [y,m,day] = bookingData.scheduledDate.split('-').map(Number);
     const requestedDate = new Date(y, m - 1, day);
     const now = new Date();
-    const minimum = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (now.getHours() >= 23) minimum.setDate(minimum.getDate() + 1);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const minimum = new Date(today);
+    if (now.getHours() >= 21) minimum.setDate(minimum.getDate() + 1);
     if (requestedDate < minimum) {
       throw new Error('Please choose a future work date.');
+    }
+    if (bookingData.scheduledSlot === '06:00') {
+      if (requestedDate <= today) {
+        throw new Error('The 6:00 AM slot must be booked on the previous day, before 9:00 PM.');
+      }
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (requestedDate.getTime() === tomorrow.getTime() && now.getHours() >= 21) {
+        throw new Error('The 6:00 AM slot for tomorrow must be booked before 9:00 PM today.');
+      }
     }
     const count = state.bookings.length + 1;
     const bookingCode = `ZUNO-${2600 + count}`;
