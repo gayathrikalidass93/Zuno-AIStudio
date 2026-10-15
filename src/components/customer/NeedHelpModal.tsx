@@ -85,8 +85,6 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
   const needsAdminCallback = selectedCategories.some(service => service === 'organisation' || service === 'family');
   const suggestedPrice = useMemo(() => needsAdminCallback ? 0 : selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms, cookingMembers, laundryMethod, laundryClothes, needsAdminCallback]);
-
-  const needsAdminCallback = selectedCategories.some(service => service === 'organisation' || service === 'family');
   const suggestedPrice = useMemo(() => needsAdminCallback ? 0 : selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms, cookingMembers, laundryMethod, laundryClothes, needsAdminCallback]);
 
   const selectedTaskIds = selectedCategories.map((service) =>
