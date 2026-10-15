@@ -25,7 +25,9 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
-  const [roleTab, setRoleTab] = useState<AuthRole>('customer');
+  // Each portal is selected by its URL, not by an in-page role switcher.
+  const entryPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const roleTab: AuthRole = entryPath === '/helper' ? 'helper' : entryPath === '/admin' ? 'admin' : 'customer';
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
 
   // Customer form inputs
@@ -190,63 +192,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Role Selection Tabs */}
-        <div className="p-4 border-b border-stone-100 bg-stone-50">
-          <div className="text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-2 text-center">
-            Sign In As:
+        {/* Show only the portal matching this URL. */}
+        <div className="px-5 py-3 border-b border-stone-100 bg-stone-50">
+          <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${roleTab === 'helper' ? 'bg-emerald-100 text-emerald-800' : roleTab === 'admin' ? 'bg-stone-200 text-stone-800' : 'bg-orange-100 text-orange-800'}`}>
+            {roleTab === 'helper' ? <HeartHandshake className="w-4 h-4" /> : roleTab === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
+            <span>{roleTab === 'helper' ? 'Helper Partner Portal' : roleTab === 'admin' ? 'ZUNO Admin Portal' : 'Customer App'}</span>
           </div>
-          <div className="grid grid-cols-3 p-1.5 bg-stone-200/70 rounded-2xl gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('customer');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'customer'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Customer</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('helper');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'helper'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <HeartHandshake className="w-4 h-4" />
-              <span>Helper</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab('admin');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                roleTab === 'admin'
-                  ? 'bg-stone-900 text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Admin</span>
-            </button>
-          </div>
+          {roleTab !== 'customer' && <a href="/" className="float-right mt-2 text-xs font-semibold text-orange-700 hover:underline">Go to Customer App</a>}
         </div>
 
         {/* Content Body */}
