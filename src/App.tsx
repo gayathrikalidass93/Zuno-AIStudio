@@ -151,6 +151,15 @@ export default function App() {
     setSession(null);
   };
 
+  // Route each role to its own entry point: / for customers, /helper, and /admin.
+  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const routeRole: AuthRole = currentPath === '/helper' ? 'helper' : currentPath === '/admin' ? 'admin' : 'customer';
+
+  // Never show a signed-in dashboard on a different role's portal URL.
+  if (session && session.role !== routeRole) {
+    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
   // If a helper session points to a missing helper record, do not silently show Lakshmi/another helper.
   if (session?.role === 'helper' && !sessionHelper) {
     db.logout();
