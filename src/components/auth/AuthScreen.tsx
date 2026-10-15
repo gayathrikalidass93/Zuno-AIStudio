@@ -26,7 +26,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   // Keep each role on its own portal URL, like a marketplace with separate partner/admin access.
-  const entryPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const entryRole: AuthRole = entryPath === '/helper' ? 'helper' : entryPath === '/admin' ? 'admin' : 'customer';
   const [roleTab, setRoleTab] = useState<AuthRole>(entryRole);
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
