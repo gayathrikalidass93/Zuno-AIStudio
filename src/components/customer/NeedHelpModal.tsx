@@ -251,7 +251,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     category,
                     tasks: selectedTaskIds,
                     scheduledDate: workDate,
-                    scheduledSlot: 'Work-specific booking',
+                    scheduledSlot: workTime,
                     durationHours: 1,
                     estimatedWorkloadMinutes: 0,
                     isUrgent: false,
