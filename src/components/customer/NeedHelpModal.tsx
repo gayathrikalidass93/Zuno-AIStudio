@@ -34,12 +34,17 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const getLocalDateString = (date: Date) => { const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };
   const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
+  const [scheduledSlot, setScheduledSlot] = useState('');
+  const availableTimeSlots = ['8:00 AM - 10:00 AM', '10:00 AM - 12:00 PM', '12:00 PM - 2:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM', '6:00 PM - 8:00 PM'];
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : []);
   const [bedrooms, setBedrooms] = useState(2);
   const [halls, setHalls] = useState(1);
   const [kitchens, setKitchens] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
+  const [cookingMembers, setCookingMembers] = useState(1);
+  const [laundryMethod, setLaundryMethod] = useState<'machine' | 'hand'>('machine');
+  const [laundryClothes, setLaundryClothes] = useState(10);
   const [cleaningType, setCleaningType] = useState<'casual'|'regular'>('regular');
   const [offer, setOffer] = useState('');
   const [counter, setCounter] = useState(0);
@@ -54,24 +59,29 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setBlock(customer.block || '');
     setFlat(customer.flat || '');
     setWorkDate(getMinWorkDate());
+    setScheduledSlot('');
     setCategory(preselectedCategory || 'cleaning');
     setSelectedCategories(preselectedCategory ? [preselectedCategory] : []);
     setOffer('');
     setCounter(0);
     setAgreedPrice(0);
     setNotes('');
+    setCookingMembers(1);
+    setLaundryMethod('machine');
+    setLaundryClothes(10);
   }, [isOpen, customer, preselectedCategory, initialHelperId]);
 
   const priceForCategory = (service: ServiceCategory) => {
     if (service === 'cleaning') return Math.max(250, bedrooms * 100 + halls * 80 + kitchens * 90 + 100);
-    if (service === 'bathroom_cleaning') return Math.max(199, bathrooms * 180);
-    if (service === 'cooking') return 300;
+    if (service === 'bathroom_cleaning') return Math.max(150, bathrooms * 150);
+    if (service === 'cooking') return Math.max(50, cookingMembers * 50);
     if (service === 'laundry') return 250;
-    if (service === 'organisation') return 300;
+    if (service === 'organisation' || service === 'family') return 0;
     return 300;
   };
 
-  const suggestedPrice = useMemo(() => selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms]);
+  const needsAdminCallback = selectedCategories.some(service => service === 'organisation' || service === 'family');
+  const suggestedPrice = useMemo(() => needsAdminCallback ? 0 : selectedCategories.reduce((total, service) => total + priceForCategory(service), 0), [selectedCategories, bedrooms, halls, kitchens, bathrooms, cookingMembers, laundryMethod, laundryClothes, needsAdminCallback]);
 
   const selectedTaskIds = selectedCategories.map((service) =>
     service === 'cleaning' ? 'clean_sweep' :
@@ -81,9 +91,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     service === 'organisation' ? 'organise_home' : 'family_help'
   );
 
-  // Automatically assign the highest-ranked verified helper who is currently
-  // available and eligible for the requested services. Customers do not choose helpers.
-  const selectedHelper = useMemo(() => {
+  // Notify every ranked helper who is eligible and available. The first one to
+  // accept will be assigned by the datastore; the rest will lose access to the request.
+  const eligibleHelpers = useMemo(() => {
     const matches = matchHelpers(helpers, {
       selectedTaskIds,
       locality,
@@ -91,15 +101,21 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       isUrgent: false,
       customer,
     });
-    return matches.find((match) =>
-      match.isEligible &&
-      ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
-    )?.helper;
+    return matches
+      .filter((match) =>
+        match.isEligible &&
+        ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
+      )
+      .map((match) => match.helper);
   }, [helpers, selectedCategories, locality, apartmentName, customer]);
+  const selectedHelper = eligibleHelpers[0];
 
   const workDescription = selectedCategories.map((service) => {
     if (service === 'cleaning') return `Brooming / Mopping: ${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
-    if (service === 'bathroom_cleaning') return `Bathroom Cleaning: ${bathrooms} bathroom(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
+    if (service === 'bathroom_cleaning') return `Bathroom Cleaning: ${bathrooms} bathroom(s) · ₹150 per bathroom`;
+    if (service === 'cooking') return `Cooking: ${cookingMembers} family member(s) · ₹50 per member (minimum ₹50)`;
+    if (service === 'laundry') return laundryMethod === 'machine' ? 'Laundry: Machine wash and hang up · 1 wash' : `Laundry: Hand wash · ${laundryClothes} item(s)`;
+    if (service === 'organisation' || service === 'family') return `${services.find(s => s.id === service)?.name || service} · Admin will call to discuss the work and confirm pricing`;
     return services.find(s => s.id === service)?.name || service;
   }).join(' + ');
 
@@ -110,14 +126,16 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
     onConfirmBooking({
       customerId: customer.id,
-      helperId: selectedHelper?.id,
+      helperId: undefined,
+      candidateHelperIds: needsAdminCallback ? [] : eligibleHelpers.map((helper) => helper.id),
+      eligibleHelperIds: needsAdminCallback ? eligibleHelpers.map((helper) => helper.id) : [],
       bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
       category,
       tasks: taskIds,
       scheduledDate: workDate,
-      scheduledSlot: 'Work-specific booking',
+      scheduledSlot,
       durationHours: 1,
       estimatedWorkloadMinutes: 0,
       isUrgent: false,
@@ -126,11 +144,11 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       block,
       flat,
       customerNotes: notes,
-      workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+      workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: needsAdminCallback },
       customerOfferPrice: finalPrice,
       negotiatedAgreedPrice: finalPrice,
-      priceNegotiationStatus: 'pending_helper',
-      paymentStatus: 'pay_after_arrival_or_completion',
+      priceNegotiationStatus: needsAdminCallback ? 'admin_quote_needed' : 'pending_helper',
+      paymentStatus: needsAdminCallback ? 'awaiting_admin_quote' : 'pay_after_arrival_or_completion',
       pricing: {
         baseHourlyRate: selectedHelper?.hourlyRate ?? 0,
         durationHours: 1,
@@ -170,10 +188,11 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
         </div>}
 
         {step === 2 && <div className="space-y-4">
-          <h2 className="font-black text-xl">Choose work date</h2>
-          <p className="text-sm text-stone-500">Helpers are matched by the work requested, not by time slots.</p>
-          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
-          <button disabled={workDate < getMinWorkDate()} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
+          <h2 className="font-black text-xl">Choose date & time</h2>
+          <p className="text-sm text-stone-500">When would you like the helper to arrive? Choose your preferred two-hour slot.</p>
+          <label className="block text-xs font-bold">Date<input type="date" min={getMinWorkDate()} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <div className="space-y-2"><div className="text-xs font-bold">Preferred arrival time</div><div className="grid grid-cols-2 gap-2">{availableTimeSlots.map(slot => <button key={slot} type="button" onClick={() => setScheduledSlot(slot)} className={`p-3 rounded-xl border text-sm font-semibold ${scheduledSlot === slot ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-stone-200 hover:border-stone-400'}`}>{slot}</button>)}</div></div>
+          <button disabled={workDate < getMinWorkDate() || !scheduledSlot} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
         {step === 3 && <div className="space-y-4">
@@ -187,40 +206,70 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
             });
           }} className={`p-4 rounded-2xl border text-left ${selectedCategories.includes(s.id)?'border-orange-500 bg-orange-50':'border-stone-200'}`}>
             <div className="text-2xl">{s.icon}</div><div className="font-bold text-sm mt-2">{s.name}</div>
+            <div className="text-sm font-black text-stone-900 mt-2">{s.id === 'organisation' || s.id === 'family' ? 'Custom quote' : `₹${priceForCategory(s.id)}`}</div>
+            <div className="text-[10px] text-stone-500">{s.id === 'organisation' || s.id === 'family' ? 'Price confirmed by Zuno' : 'Estimated price'}</div>
             {selectedCategories.includes(s.id) && <div className="text-[10px] font-bold text-orange-700 mt-1">Selected</div>}
           </button>)}</div>
           <button disabled={!selectedCategories.length} onClick={()=>setStep(4)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
+
         {step === 4 && <div className="space-y-4">
           <h2 className="font-black text-xl">Work details</h2>
-          {category === 'cleaning' && <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">{[['Bedrooms',bedrooms,setBedrooms],['Halls',halls,setHalls],['Kitchens',kitchens,setKitchens]].map(([label,value,setter])=><label key={label as string} className="text-xs font-bold">{label as string}<input type="number" min="0" value={value as number} onChange={e=>(setter as any)(Number(e.target.value))} className="mt-1 w-full p-3 rounded-xl border"/></label>)}</div>
-            <div className="p-3 rounded-xl bg-stone-50 text-xs text-stone-600">Cleaning includes brooming and mopping using your home's available cleaning products.</div>
-            <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} onClick={()=>setCleaningType(t)} className={`p-3 rounded-xl border font-bold text-sm ${cleaningType===t?'border-orange-500 bg-orange-50':''}`}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
-          </div>}
-          {category === 'bathroom_cleaning' && <div className="space-y-4">
-            <label className="text-xs font-bold">Bathrooms<input type="number" min="1" value={bathrooms} onChange={e=>setBathrooms(Number(e.target.value))} className="mt-1 w-full p-3 rounded-xl border"/></label>
-            <div className="p-3 rounded-xl bg-stone-50 text-xs text-stone-600">Bathroom cleaning includes toilet, sink, floor, shower area, tiles and mirror as applicable, using your home's available cleaning products.</div>
-            <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} onClick={()=>setCleaningType(t)} className={`p-3 rounded-xl border font-bold text-sm ${cleaningType===t?'border-orange-500 bg-orange-50':''}`}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
-          </div>}
-          {!['cleaning','bathroom_cleaning'].includes(category) && <div className="p-4 rounded-2xl bg-stone-50 text-sm">Tell the helper the exact work for <b>{services.find(s=>s.id===category)?.name}</b> in the notes on the review step.</div>}
+          <p className="text-sm text-stone-500">Enter details for every service you selected. Cooking is ₹50 per person; choose your laundry method below.</p>
+          {selectedCategories.map((service) => <div key={service} className="p-4 rounded-2xl border border-stone-200 space-y-3">
+            <h3 className="font-bold">{services.find(s => s.id === service)?.icon} {services.find(s => s.id === service)?.name}</h3>
+            {service === 'cleaning' && <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">{[['Bedrooms',bedrooms,setBedrooms],['Halls',halls,setHalls],['Kitchens',kitchens,setKitchens]].map(([label,value,setter])=><label key={label as string} className="text-xs font-bold">{label as string}<input type="number" min="0" value={value as number} onChange={e=>(setter as any)(Math.max(0, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>)}</div>
+              <div className="grid grid-cols-2 gap-2">{(['casual','regular'] as const).map(t=><button key={t} type="button" onClick={()=>setCleaningType(t)} className={'p-3 rounded-xl border font-bold text-sm ' + (cleaningType===t?'border-orange-500 bg-orange-50':'')}>{t==='casual'?'Casual Cleaning':'Regular Cleaning'}</button>)}</div>
+            </div>}
+            {service === 'bathroom_cleaning' && <div className="space-y-3">
+              <label className="text-xs font-bold">Number of bathrooms<input type="number" min="1" value={bathrooms} onChange={e=>setBathrooms(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>
+              <p className="text-xs text-stone-500">₹150 per bathroom.</p>
+            </div>}
+            {service === 'cooking' && <div className="space-y-3">
+              <label className="block text-xs font-bold">How many family members?<input type="number" min="1" value={cookingMembers} onChange={e=>setCookingMembers(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>
+              <p className="text-sm font-semibold text-orange-700">Cooking price: ₹50 × {cookingMembers} {cookingMembers === 1 ? 'person' : 'people'} = ₹{cookingMembers * 50}</p>
+            </div>}
+            {service === 'laundry' && <div className="space-y-3">
+              <div className="text-xs font-bold">Choose laundry method</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>setLaundryMethod('machine')} className={'p-3 rounded-xl border text-sm font-bold ' + (laundryMethod==='machine'?'border-orange-500 bg-orange-50':'')}>Machine wash</button>
+                <button type="button" onClick={()=>setLaundryMethod('hand')} className={'p-3 rounded-xl border text-sm font-bold ' + (laundryMethod==='hand'?'border-orange-500 bg-orange-50':'')}>Hand wash</button>
+              </div>
+              {laundryMethod==='machine' ? <p className="text-sm text-stone-600">One machine wash and hang clothes to dry.</p> : <label className="block text-xs font-bold">How many clothes/items?<input type="number" min="1" value={laundryClothes} onChange={e=>setLaundryClothes(Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-3 rounded-xl border"/></label>}
+              <p className="text-xs text-stone-500">Estimated laundry price: ₹250. Zuno will confirm if the amount changes based on the load.</p>
+            </div>}
+            {(service === 'organisation' || service === 'family') && <div className="p-3 rounded-xl bg-amber-50 text-sm">A Zuno team member will call to understand the work and confirm pricing.</div>}
+          </div>)}
+          <div className="p-3 rounded-xl bg-stone-50 text-sm font-bold">Current estimated total: {needsAdminCallback ? 'To be confirmed by Zuno' : '₹' + suggestedPrice}</div>
           <button onClick={()=>setStep(5)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold">Continue to price <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
         {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
-          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll check for the most suitable available helper and notify you.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
+          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll send your request to all suitable available helpers. The first to accept will be assigned.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
-            <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
+            <div className="font-bold">Selected services: {selectedCategories.map(service => services.find(s=>s.id===service)?.name).join(" + ")}</div>
             <div>{workDescription}</div>
             <div className="text-xs text-stone-500"><MapPin className="inline w-3.5 h-3.5"/> {flat}, {block}, {apartmentName}, {locality}</div>
             <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate}</div>
           </div>
-          <div className="p-4 rounded-2xl border border-stone-200">
-            <div className="flex justify-between"><span className="font-bold">Suggested price</span><b>₹{suggestedPrice}</b></div>
-            <p className="text-xs text-stone-500 mt-1">Based on the actual work, not hours.</p>
-            {counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
+          <div className="p-4 rounded-2xl border border-stone-200 space-y-3">
+            <h3 className="font-bold">Price breakdown</h3>
+            <div className="space-y-2">
+              {selectedCategories.map((service) => {
+                const item = services.find((entry) => entry.id === service);
+                const customQuote = service === 'organisation' || service === 'family';
+                return <div key={service} className="flex items-start justify-between gap-3 text-sm">
+                  <span>{item?.icon} {item?.name}</span>
+                  <span className="font-bold text-right">{customQuote ? 'Custom quote' : `₹${priceForCategory(service)}`}</span>
+                </div>;
+              })}
+            </div>
+            <div className="border-t border-stone-200 pt-3 flex justify-between gap-3"><span className="font-bold">{needsAdminCallback ? 'Final total' : 'Estimated total'}</span><b>{needsAdminCallback ? 'To be confirmed' : `₹${suggestedPrice}`}</b></div>
+            <p className="text-xs text-stone-500">{needsAdminCallback ? 'Our admin team will call to understand the custom-quote service(s). Prices shown for other selected services are estimates; Zuno will confirm the final total.' : 'Each selected service is priced separately, and the estimated total is their sum. Final price may be agreed with the helper.'}</p>
+            {needsAdminCallback ? <div className="mt-3 space-y-3"><p className="text-sm text-stone-600">No price is charged or quoted at this step. Our admin team will call you to collect details and confirm the price.</p><button type="button" onClick={buildBooking} className="w-full p-3 rounded-xl bg-orange-600 text-white font-bold">Request admin callback</button></div> : <>{counter > 0 && <div className="mt-3 p-3 rounded-xl bg-amber-50 text-sm">Helper counter: <b>₹{counter}</b></div>}
             <div className="mt-3 flex gap-2">
               <input type="number" min="1" value={offer} onChange={e=>setOffer(e.target.value)} placeholder="Your offer" className="flex-1 p-3 rounded-xl border"/>
               <button
@@ -231,7 +280,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                   setAgreedPrice(n);
                   onConfirmBooking({
                     customerId: customer.id,
-                    helperId: selectedHelper?.id,
+                    helperId: undefined,
+                    candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
                     bookingMode: 'let_zuno_choose',
                     bookingType: 'casual',
                     status: 'requested',
@@ -247,7 +297,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                     block,
                     flat,
                     customerNotes: notes,
-                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType },
+                    workScope: { description: workDescription, bedrooms, halls, kitchens, bathrooms, cleaningType, cookingMembers, laundryMethod, laundryClothes, adminCallbackRequired: needsAdminCallback },
                     customerOfferPrice: n,
                     negotiatedAgreedPrice: n,
                     priceNegotiationStatus: 'pending_helper',
@@ -273,7 +323,8 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 {selectedHelper ? 'Send Offer' : 'Send Request'}
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while the helper responds to your offer.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
+            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while eligible helpers respond. The first acceptance wins.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
+            </>}
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>
