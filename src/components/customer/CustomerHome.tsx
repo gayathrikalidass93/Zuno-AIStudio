@@ -27,21 +27,24 @@ const SERVICES = [
 
 export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, lastCreatedBookingId, onOpenNeedHelp, onBookAgain, onViewBookingDetails, onToggleFavourite, onLogout }) => {
   const [tab, setTab] = useState<'home'|'bookings'|'profile'>('home');
-  const [bookingTab, setBookingTab] = useState<'upcoming'|'active'|'history'>('upcoming');
+  const [bookingTab, setBookingTab] = useState<'pending'|'upcoming'|'active'|'history'>('pending');
   const [language, setLanguage] = useState(customer.preferredLanguage || 'English');
   const [counterInput, setCounterInput] = useState<string>('');
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [cancellationComment, setCancellationComment] = useState<string>('');
 
   // After a booking is created, open the Upcoming list so the new service is easy to find.
   useEffect(() => {
     if (lastCreatedBookingId && bookings.some((booking) => booking.id === lastCreatedBookingId && booking.customerId === customer.id)) {
       setTab('bookings');
-      setBookingTab('upcoming');
+      setBookingTab('pending');
     }
   }, [lastCreatedBookingId, bookings, customer.id]);
 
   const myBookings = useMemo(() => bookings.filter(b => b.customerId === customer.id), [bookings, customer.id]);
-  // A declined price offer is still an open booking; never hide it because of its status.
-  const upcoming = myBookings.filter(b => b.priceNegotiationStatus === 'declined' || ['requested','confirmed','helper_assigned','replacement_required'].includes(b.status));
+  // Keep unassigned requests and price negotiation responses visible in Pending.
+  const pending = myBookings.filter(b => b.status !== 'cancelled' && (b.status === 'requested' || ['pending_helper','countered'].includes(b.priceNegotiationStatus || '')));
+  const upcoming = myBookings.filter(b => b.status !== 'cancelled' && (b.priceNegotiationStatus === 'declined' || ['confirmed','helper_assigned','replacement_required'].includes(b.status)));
   const active = myBookings.filter(b => ['on_the_way','started'].includes(b.status));
   const history = myBookings.filter(b => ['completed','cancelled'].includes(b.status));
 
@@ -56,7 +59,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
     }
   };
 
-  const list = bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
+  const list = bookingTab === 'pending' ? pending : bookingTab === 'upcoming' ? upcoming : bookingTab === 'active' ? active : history;
   const statusLabel = (b: Booking) => b.priceNegotiationStatus === 'pending_helper'
     ? (b.helperId ? `Pending from Helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} sent` : `Finding a helper · Offer ₹${b.customerOfferPrice ?? b.pricing.totalAmount} saved`)
     : b.priceNegotiationStatus === 'countered'
@@ -72,11 +75,12 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
       <header className="flex items-center justify-between">
         <div>
           <p className="text-sm text-stone-500">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'} 👋</p>
-          <h1 className="text-2xl font-black text-stone-900">What do you need help with?</h1>
+          <h1 className="text-2xl font-black text-stone-900">{tab === 'bookings' ? 'Your Bookings' : 'What do you need help with?'}</h1>
           <p className="text-sm text-stone-500 mt-1">{customer.apartmentName} · {customer.block} · Flat {customer.flat}</p>
         </div>
       </header>
 
+      {tab !== 'bookings' && <>
       <button onClick={onOpenNeedHelp} className="w-full rounded-2xl bg-orange-600 text-white p-4 text-left shadow-md hover:bg-orange-700">
         <div className="text-lg font-black">Need Help</div>
         <div className="text-sm text-orange-100">Choose your work, date, helper and negotiate the price.</div>
@@ -93,16 +97,17 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
           ))}
         </div>
       </section>
+      </>}
 
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-stone-800">Your Bookings</h2>
-          <button onClick={() => setTab('bookings')} className="text-xs font-bold text-orange-600">View all</button>
+          <button onClick={() => { setTab('bookings'); setBookingTab('pending'); }} className="text-xs font-bold text-orange-600">View all</button>
         </div>
         <div className="flex p-1 bg-stone-100 rounded-xl mb-3">
-          {(['upcoming','active','history'] as const).map(t => (
+          {(['pending','upcoming','active','history'] as const).map(t => (
             <button key={t} onClick={() => { setTab('bookings'); setBookingTab(t); }} className={`flex-1 py-2 rounded-lg text-xs font-bold ${bookingTab === t && tab === 'bookings' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500'}`}>
-              {t[0].toUpperCase()+t.slice(1)}
+              {t === 'pending' ? `Pending (${pending.length})` : t[0].toUpperCase()+t.slice(1)}
             </button>
           ))}
         </div>
@@ -135,6 +140,49 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
               ) : 'Helper: Not assigned'}
             </div>
             <div className="mt-2 text-xs font-semibold text-amber-700">{statusLabel(b)}</div>
+            {['requested','confirmed','helper_assigned','replacement_required'].includes(b.status) && (
+              <div className="mt-3" onClick={e=>e.stopPropagation()}>
+                {cancellingBookingId === b.id ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 space-y-2">
+                    <div className="text-xs font-bold text-rose-900">Cancel this booking?</div>
+                    <div className="text-[11px] text-rose-800">Comment is optional. The request will be withdrawn from helpers.</div>
+                    <textarea
+                      value={cancellationComment}
+                      onChange={e => setCancellationComment(e.target.value)}
+                      placeholder="Optional comment (e.g. booked by mistake)"
+                      rows={2}
+                      className="w-full rounded-lg border border-rose-200 bg-white p-2 text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const cancelled = db.cancelBookingByCustomer(b.id, customer.id, cancellationComment);
+                          if (cancelled) {
+                            setCancellingBookingId(null);
+                            setCancellationComment('');
+                          }
+                        }}
+                        className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+                      >Confirm cancellation</button>
+                      <button
+                        onClick={() => { setCancellingBookingId(null); setCancellationComment(''); }}
+                        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-bold"
+                      >Keep booking</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setCancellingBookingId(b.id); setCancellationComment(''); }}
+                    className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50"
+                  >Decline / Cancel booking</button>
+                )}
+              </div>
+            )}
+            {b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
+              <div className="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600" onClick={e=>e.stopPropagation()}>
+                <b>Cancelled by you.</b>{b.cancellation.reason && b.cancellation.reason !== 'No comment provided' ? ` Comment: ${b.cancellation.reason}` : ''}
+              </div>
+            )}
             {b.priceNegotiationStatus === 'countered' && (
               <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200" onClick={e=>e.stopPropagation()}>
                 <div className="text-[11px] text-amber-900 font-semibold mb-2">
@@ -149,7 +197,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
             )}
           </div>;
         })}
-        {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">No bookings in this section.</div>}
+        {list.length === 0 && <div className="bg-stone-50 rounded-2xl p-5 text-sm text-stone-500 text-center">{bookingTab === 'pending' ? 'No pending bookings yet. New requests will appear here while a helper responds.' : 'No bookings in this section.'}</div>}
       </section>
 
       {tab === 'profile' && (
@@ -167,7 +215,7 @@ export const CustomerHome: React.FC<Props> = ({ customer, helpers, bookings, las
 
       <nav className="grid grid-cols-3 bg-white border border-stone-200 rounded-2xl p-1">
         {([['home','Home'],['bookings','Bookings'],['profile','Profile']] as const).map(([id,label]) =>
-          <button key={id} onClick={() => setTab(id)} className={`rounded-xl py-2.5 text-xs font-bold ${tab===id?'bg-stone-900 text-white':'text-stone-500'}`}>{label}</button>
+          <button key={id} onClick={() => { setTab(id); if (id === 'bookings') setBookingTab('pending'); }} className={`rounded-xl py-2.5 text-xs font-bold ${tab===id?'bg-stone-900 text-white':'text-stone-500'}`}>{label}</button>
         )}
       </nav>
     </div>

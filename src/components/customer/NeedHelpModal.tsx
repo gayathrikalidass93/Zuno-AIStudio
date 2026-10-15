@@ -32,8 +32,12 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [block, setBlock] = useState(customer.block || '');
   const [flat, setFlat] = useState(customer.flat || '');
   const getLocalDateString = (date: Date) => { const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };
-  const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 23) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
+  const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 21) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
+  const makeTimeSlots = (date: string) => { const now = new Date(); const today = getLocalDateString(now); const tomorrow = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)); return Array.from({ length: 16 }, (_, index) => index + 6).filter((hour) => { if (date === today) return hour !== 6 && hour > now.getHours(); if (date === tomorrow && now.getHours() >= 21) return hour !== 6; return true; }).map((hour) => ({ value: `${String(hour).padStart(2, '0')}:00`, label: `${hour % 12 || 12}:00 ${hour < 12 ? 'AM' : 'PM'}` })); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
+  const [workTime, setWorkTime] = useState(makeTimeSlots(getMinWorkDate())[0]?.value || '07:00');
+  const availableTimeSlots = makeTimeSlots(workDate);
+  const selectedTimeLabel = availableTimeSlots.find((slot) => slot.value === workTime)?.label || workTime;
   const [category, setCategory] = useState<ServiceCategory>(preselectedCategory || 'cleaning');
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(preselectedCategory ? [preselectedCategory] : []);
   const [bedrooms, setBedrooms] = useState(2);
@@ -53,7 +57,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     setApartmentName(customer.apartmentName || '');
     setBlock(customer.block || '');
     setFlat(customer.flat || '');
-    setWorkDate(getMinWorkDate());
+    const minDate = getMinWorkDate();
+    setWorkDate(minDate);
+    setWorkTime(makeTimeSlots(minDate)[0]?.value || '07:00');
     setCategory(preselectedCategory || 'cleaning');
     setSelectedCategories(preselectedCategory ? [preselectedCategory] : []);
     setOffer('');
@@ -81,9 +87,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
     service === 'organisation' ? 'organise_home' : 'family_help'
   );
 
-  // Automatically assign the highest-ranked verified helper who is currently
-  // available and eligible for the requested services. Customers do not choose helpers.
-  const selectedHelper = useMemo(() => {
+  // Notify every ranked helper who is eligible and available. The first one to
+  // accept will be assigned by the datastore; the rest will lose access to the request.
+  const eligibleHelpers = useMemo(() => {
     const matches = matchHelpers(helpers, {
       selectedTaskIds,
       locality,
@@ -91,11 +97,14 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
       isUrgent: false,
       customer,
     });
-    return matches.find((match) =>
-      match.isEligible &&
-      ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
-    )?.helper;
+    return matches
+      .filter((match) =>
+        match.isEligible &&
+        ['available_now', 'available_today'].includes(match.helper.availabilityStatus)
+      )
+      .map((match) => match.helper);
   }, [helpers, selectedCategories, locality, apartmentName, customer]);
+  const selectedHelper = eligibleHelpers[0];
 
   const workDescription = selectedCategories.map((service) => {
     if (service === 'cleaning') return `Brooming / Mopping: ${bedrooms} bedroom(s), ${halls} hall(s), ${kitchens} kitchen(s) · ${cleaningType === 'regular' ? 'Regular' : 'Casual'}`;
@@ -104,20 +113,21 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   }).join(' + ');
 
   const buildBooking = () => {
-    if (workDate < getMinWorkDate()) { setStep(2); return; }
+    if (workDate < getMinWorkDate() || !availableTimeSlots.some((slot) => slot.value === workTime)) { setStep(2); return; }
     const finalPrice = agreedPrice || counter || Number(offer) || suggestedPrice;
     const taskIds = selectedCategories.map((service) => service === 'cleaning' ? 'clean_sweep' : service === 'bathroom_cleaning' ? 'bath_clean' : service === 'cooking' ? 'cook_home' : service === 'laundry' ? 'laundry_home' : service === 'organisation' ? 'organise_home' : 'family_help');
 
     onConfirmBooking({
       customerId: customer.id,
-      helperId: selectedHelper?.id,
+      helperId: undefined,
+      candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
       bookingMode: 'let_zuno_choose',
       bookingType: 'casual',
       status: 'requested',
       category,
       tasks: taskIds,
       scheduledDate: workDate,
-      scheduledSlot: 'Work-specific booking',
+      scheduledSlot: workTime,
       durationHours: 1,
       estimatedWorkloadMinutes: 0,
       isUrgent: false,
@@ -171,8 +181,9 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 2 && <div className="space-y-4">
           <h2 className="font-black text-xl">Choose work date</h2>
-          <p className="text-sm text-stone-500">Helpers are matched by the work requested, not by time slots.</p>
-          <label className="text-xs font-bold">Date<input type="date" min={new Date().toISOString().slice(0,10)} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) setWorkDate(value); }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <p className="text-sm text-stone-500">Choose a start time between 6:00 AM and 9:00 PM. The 6:00 AM slot must be booked before 9:00 PM on the previous day.</p>
+          <label className="text-xs font-bold">Date<input type="date" min={getMinWorkDate()} value={workDate} onChange={e=>{ const value=e.target.value; if (value >= getMinWorkDate()) { setWorkDate(value); setWorkTime(makeTimeSlots(value)[0]?.value || '07:00'); } }} className="mt-1 w-full p-3 rounded-xl border"/></label>
+          <label className="text-xs font-bold block">Start time<select value={workTime} onChange={e=>setWorkTime(e.target.value)} className="mt-1 w-full p-3 rounded-xl border">{availableTimeSlots.map(slot=><option key={slot.value} value={slot.value}>{slot.label}</option>)}</select></label>
           <button disabled={workDate < getMinWorkDate()} onClick={()=>setStep(3)} className="w-full p-3.5 rounded-xl bg-orange-600 text-white font-bold disabled:opacity-40">Continue <ChevronRight className="inline w-4 h-4"/></button>
         </div>}
 
@@ -210,12 +221,12 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
 
         {step === 5 && <div className="space-y-4">
           <h2 className="font-black text-xl">Review & negotiate</h2>
-          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll check for the most suitable available helper and notify you.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
+          <div className={`p-3 rounded-xl border text-xs ${selectedHelper ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>{selectedHelper ? 'We’ll send your request to all suitable available helpers. The first to accept will be assigned.' : 'No eligible helper is available right now. You can still send this request; it will be saved in Upcoming Services for Admin follow-up.'}</div>
           <div className="p-4 rounded-2xl bg-stone-50 space-y-2 text-sm">
             <div className="font-bold">{services.find(s=>s.id===category)?.icon} {services.find(s=>s.id===category)?.name}</div>
             <div>{workDescription}</div>
             <div className="text-xs text-stone-500"><MapPin className="inline w-3.5 h-3.5"/> {flat}, {block}, {apartmentName}, {locality}</div>
-            <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate}</div>
+            <div className="text-xs text-stone-500"><CalendarDays className="inline w-3.5 h-3.5"/> {workDate} · {selectedTimeLabel}</div>
           </div>
           <div className="p-4 rounded-2xl border border-stone-200">
             <div className="flex justify-between"><span className="font-bold">Suggested price</span><b>₹{suggestedPrice}</b></div>
@@ -228,17 +239,19 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 onClick={() => {
                   const n = Number(offer);
                   if (n <= 0) return;
+                  if (workDate < getMinWorkDate() || !availableTimeSlots.some((slot) => slot.value === workTime)) { setStep(2); return; }
                   setAgreedPrice(n);
                   onConfirmBooking({
                     customerId: customer.id,
-                    helperId: selectedHelper?.id,
+                    helperId: undefined,
+                    candidateHelperIds: eligibleHelpers.map((helper) => helper.id),
                     bookingMode: 'let_zuno_choose',
                     bookingType: 'casual',
                     status: 'requested',
                     category,
                     tasks: selectedTaskIds,
                     scheduledDate: workDate,
-                    scheduledSlot: 'Work-specific booking',
+                    scheduledSlot: workTime,
                     durationHours: 1,
                     estimatedWorkloadMinutes: 0,
                     isUrgent: false,
@@ -273,7 +286,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
                 {selectedHelper ? 'Send Offer' : 'Send Request'}
               </button>
             </div>
-            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while the helper responds to your offer.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
+            <p className="mt-2 text-xs text-stone-500">{selectedHelper ? 'Your request will be saved in Upcoming Services while eligible helpers respond. The first acceptance wins.' : 'Your request will be saved in Upcoming Services without a helper assigned yet. Admin can review it and assign an eligible helper.'}</p>
           </div>
           <label className="text-xs font-bold">Notes (optional)<input value={notes} onChange={e=>setNotes(e.target.value)} className="mt-1 w-full p-3 rounded-xl border" placeholder="Anything the helper should know"/></label>
           <button disabled className="w-full p-3.5 rounded-xl font-bold bg-stone-100 text-stone-400">Offer sent — Pending from Helper</button>

@@ -424,7 +424,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     {replacementRequiredCount} Booking(s) Require Helper Replacement
                   </div>
                   <div className="text-[11px] text-amber-800">
-                    A helper cancelled. ZUNO Match engine has found candidate replacements awaiting customer confirmation.
+                    Warning: a helper declined after assignment. The booking has been rebroadcast to eligible helpers; review the reason and monitor for a new acceptance.
                   </div>
                 </div>
               </div>
@@ -739,6 +739,13 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                     .map((b) => {
                       const helper = helpers.find((h) => h.id === b.helperId);
                       const customer = customers.find((c) => c.id === b.customerId);
+                      // Only show scope details for service categories the customer actually selected.
+                      const hasCleaningTask = b.tasks.some((taskId) =>
+                        MASTER_TASKS.some((item) => item.id === taskId && item.category === 'cleaning')
+                      );
+                      const hasBathroomCleaningTask = b.tasks.some((taskId) =>
+                        MASTER_TASKS.some((item) => item.id === taskId && item.category === 'bathroom_cleaning')
+                      );
 
                       return (
                         <tr key={b.id} className="hover:bg-stone-50/60 transition-colors">
@@ -761,6 +768,13 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                             >
                               {b.status.replace(/_/g, ' ')}
                             </span>
+                            {b.status === 'replacement_required' && b.cancellation?.cancelledBy === 'helper' && (
+                              <div className="mt-1 max-w-40 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
+                                <div className="font-bold">⚠ Helper declined after assignment</div>
+                                <div className="mt-0.5">Reason: {b.cancellation.reason || 'No reason provided'}</div>
+                                <div className="mt-0.5">Rebroadcast to {(b.candidateHelperIds || []).length} helper(s)</div>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3">
                             <div className="font-semibold text-stone-900">
@@ -786,7 +800,73 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                 )}
                               </div>
                             ) : (
-                              <span className="text-stone-400 italic">Unassigned</span>
+                              <div className="space-y-1">
+                                <span className="text-stone-400 italic">Awaiting helper acceptance</span>
+                                {((b.notifiedHelperIds || b.candidateHelperIds || []).length > 0) && (
+                                  <details className="mt-1 rounded-lg bg-stone-50 border border-stone-200 p-2">
+                                    <summary className="cursor-pointer text-[10px] font-bold text-stone-700">
+                                      Helpers ({(b.notifiedHelperIds || b.candidateHelperIds || []).length}) · View recipients
+                                    </summary>
+                                    <div className="mt-2 space-y-1">
+                                      {(b.notifiedHelperIds || b.candidateHelperIds || []).map((helperId) => {
+                                        const notifiedHelper = helpers.find((item) => item.id === helperId);
+                                        const recipientStatus = b.helperId === helperId
+                                          ? 'Accepted · assigned'
+                                          : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
+                                            ? 'Customer cancelled'
+                                            : (b.candidateHelperIds || []).includes(helperId)
+                                              ? 'Awaiting response'
+                                              : b.helperId
+                                                ? 'Closed · another helper accepted'
+                                                : 'Declined / no longer pending';
+                                        return (
+                                          <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
+                                            <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
+                                            <span className="text-stone-500 text-right">{recipientStatus}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </details>
+                                )}
+                                {b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
+                                  <div className="mt-1 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
+                                    <strong>Customer cancellation reason:</strong> {b.cancellation.reason || 'No reason provided'}
+                                    <div>Cancelled: {new Date(b.cancellation.cancelledAt).toLocaleString()}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {helper && (b.notifiedHelperIds || []).length > 0 && (
+                              <details className="mt-2 rounded-lg bg-stone-50 border border-stone-200 p-2">
+                                <summary className="cursor-pointer text-[10px] font-bold text-stone-700">
+                                  Helpers ({(b.notifiedHelperIds || []).length}) · View recipients
+                                </summary>
+                                <div className="mt-2 space-y-1">
+                                  {(b.notifiedHelperIds || []).map((helperId) => {
+                                    const notifiedHelper = helpers.find((item) => item.id === helperId);
+                                    const recipientStatus = b.helperId === helperId
+                                      ? 'Accepted · assigned'
+                                      : b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer'
+                                        ? 'Customer cancelled'
+                                        : (b.candidateHelperIds || []).includes(helperId)
+                                          ? 'Awaiting response'
+                                          : 'Closed · another helper accepted or request ended';
+                                    return (
+                                      <div key={helperId} className="flex items-start justify-between gap-2 text-[10px]">
+                                        <span className="text-stone-700">{notifiedHelper?.name || helperId}</span>
+                                        <span className="text-stone-500 text-right">{recipientStatus}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </details>
+                            )}
+                            {helper && b.status === 'cancelled' && b.cancellation?.cancelledBy === 'customer' && (
+                              <div className="mt-1 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[10px] text-rose-800">
+                                <strong>Customer cancellation reason:</strong> {b.cancellation.reason || 'No reason provided'}
+                                <div>Cancelled: {new Date(b.cancellation.cancelledAt).toLocaleString()}</div>
+                              </div>
                             )}
                           </td>
                           <td className="p-3 min-w-44">
@@ -824,28 +904,26 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                 );
                               })}
                             </div>
-                            {b.workScopeBreakdown ? (
-                              <div className="space-y-1 text-[11px]">
-                                {b.workScopeBreakdown.homeCleaning && (
-                                  <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
-                                    🧹 Home: {b.workScopeBreakdown.homeCleaning.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms}B/${b.workScopeBreakdown.homeCleaning.broomingMopping.halls}H` : 'Chores'}
-                                  </div>
-                                )}
-                                {b.workScopeBreakdown.bathroomCleaning && (
-                                  <div className="inline-block px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 font-semibold">
-                                    🚿 Bath: {b.workScopeBreakdown.bathroomCleaning.config.bathroomCount} Baths ({b.workScopeBreakdown.bathroomCleaning.config.cleaningType})
-                                  </div>
-                                )}
-                                <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="font-medium text-stone-800">
-                                  {b.tasks.length} tasks ({b.durationHours} hrs)
+                            <div className="space-y-1 text-[11px]">
+                              {hasCleaningTask && (b.workScopeBreakdown?.homeCleaning?.broomingMopping || b.workScope?.bedrooms != null || b.workScope?.kitchens != null || b.workScope?.halls != null) && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
+                                  🧹 Brooming & Mopping: {b.workScopeBreakdown?.homeCleaning?.broomingMopping ? `${b.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · ${b.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · ${b.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${b.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}` : `${b.workScope?.bedrooms ?? 0} bedrooms · ${b.workScope?.kitchens ?? 0} kitchens · ${b.workScope?.halls ?? 0} halls`}
                                 </div>
-                                <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
-                              </div>
-                            )}
+                              )}
+                              {hasBathroomCleaningTask && (b.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? b.workScope?.bathrooms) != null && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 font-semibold">
+                                  🚿 Bathrooms: {b.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? b.workScope?.bathrooms}
+                                  {b.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${b.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}
+                                </div>
+                              )}
+                              {hasCleaningTask && b.workScopeBreakdown?.homeCleaning && !b.workScopeBreakdown.homeCleaning.broomingMopping && (
+                                <div className="inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-semibold mr-1">
+                                  Home Cleaning: Other home chores
+                                </div>
+                              )}
+                              <div className="font-medium text-stone-800">{b.tasks.length} tasks ({b.durationHours} hrs)</div>
+                              <div className="text-[10px] text-stone-500">{b.scheduledSlot}</div>
+                            </div>
                           </td>
                           <td className="p-3 font-mono font-bold text-orange-600 text-sm">
                             {b.startOtp}
@@ -897,7 +975,7 @@ export const AdminControlTower: React.FC<AdminControlTowerProps> = ({
                                   className="w-full p-2 rounded-lg border border-stone-200 bg-white text-[11px]"
                                 >
                                   <option value="">Choose verified helper…</option>
-                                  {helpers.filter((h) => h.id !== b.helperId && h.isActive && h.verificationStatus === 'verified').map((h) => (
+                                  {helpers.filter((h) => h.id !== b.helperId && h.isActive && h.verificationStatus === 'verified' && h.availabilityStatus !== 'off_duty').map((h) => (
                                     <option key={h.id} value={h.id}>{h.name} · {h.locality} · ₹{h.hourlyRate}/hr</option>
                                   ))}
                                 </select>

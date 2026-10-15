@@ -49,7 +49,9 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
   const helperBookings = useMemo(
     () => bookings.filter(
       (booking) =>
-        booking.helperId === helper.id &&
+        (booking.helperId === helper.id ||
+          (!booking.helperId && (booking.candidateHelperIds || []).includes(helper.id)) ||
+          (booking.status === 'cancelled' && booking.cancellation?.cancelledBy === 'customer' && (booking.notifiedHelperIds || []).includes(helper.id))) &&
         !(booking.priceNegotiationStatus === 'declined' && booking.status === 'requested')
     ),
     [bookings, helper.id]
@@ -57,6 +59,9 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
   const activeBookings = helperBookings.filter(
     (booking) => booking.status !== 'cancelled' && booking.status !== 'completed'
+  );
+  const customerCancelledBookings = helperBookings.filter(
+    (booking) => booking.status === 'cancelled' && booking.cancellation?.cancelledBy === 'customer'
   );
   const completedBookings = helperBookings.filter((booking) => booking.status === 'completed');
 
@@ -106,7 +111,7 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
     }
     onPriceResponse?.(booking.id, action);
     if (action === 'accept') {
-      setNotice('Offer accepted. Waiting for the customer to proceed.');
+      setNotice('Booking accepted and assigned to you. It is no longer available to other helpers.');
     } else {
       setNotice('Offer declined.');
     }
@@ -208,6 +213,69 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
       {tab === 'work' && (
         <section className="space-y-3">
+          {activeBookings.length > 0 && (
+            <div className="p-3 rounded-2xl bg-white border border-stone-200 space-y-2">
+              <div className="font-bold text-sm text-stone-900">Requests received</div>
+              <div className="text-[11px] text-stone-500">Select a request to view its details and respond.</div>
+              {activeBookings.map((item) => {
+                const isAssigned = item.helperId === helper.id;
+                const isInvitation = !item.helperId && (item.candidateHelperIds || []).includes(helper.id);
+                const selectedCategories = new Set(item.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.category));
+                const hasCleaningTask = selectedCategories.has('cleaning');
+                const hasBathroomCleaningTask = selectedCategories.has('bathroom_cleaning');
+                const serviceNames = item.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedBookingId(item.id)}
+                    className={`w-full text-left p-3 rounded-xl border ${booking?.id === item.id ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 bg-stone-50'}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-bold text-stone-900">{serviceNames.join(', ') || 'Service request'}</span>
+                      <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-bold ${isAssigned ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {isAssigned ? 'Assigned to you' : isInvitation ? 'Request received' : item.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 mt-1">Booking {item.bookingCode} · {item.scheduledDate}</div>
+                    {hasCleaningTask && item.workScopeBreakdown?.homeCleaning?.broomingMopping && (
+                      <div className="text-[11px] text-stone-700 mt-1">
+                        🧹 Brooming & Mopping: {item.workScopeBreakdown.homeCleaning.broomingMopping.bedrooms} bedrooms · {item.workScopeBreakdown.homeCleaning.broomingMopping.kitchens} kitchens · {item.workScopeBreakdown.homeCleaning.broomingMopping.halls} halls
+                        {item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas ? ` · ${item.workScopeBreakdown.homeCleaning.broomingMopping.otherFloorAreas} other areas` : ''}
+                      </div>
+                    )}
+                    {hasBathroomCleaningTask && (item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms) != null && (
+                      <div className="text-[11px] text-cyan-800 mt-1">
+                        🚿 Bathrooms: {item.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? item.workScope?.bathrooms}
+                        {item.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${item.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}
+                      </div>
+                    )}
+                    {hasCleaningTask && !item.workScopeBreakdown?.homeCleaning?.broomingMopping && item.workScope && (item.workScope.bedrooms != null || item.workScope.halls != null || item.workScope.kitchens != null) && (
+                      <div className="text-[11px] text-stone-700 mt-1">
+                        🧹 Brooming & Mopping: {item.workScope.bedrooms ?? 0} bedrooms · {item.workScope.kitchens ?? 0} kitchens · {item.workScope.halls ?? 0} halls
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {customerCancelledBookings.length > 0 && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+              <div className="font-bold text-sm text-rose-900">Customer cancellations</div>
+              {customerCancelledBookings.map((cancelled) => {
+                const serviceNames = cancelled.tasks.map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id);
+                return (
+                  <div key={cancelled.id} className="rounded-xl bg-white border border-rose-100 p-3 text-xs">
+                    <div className="font-bold text-stone-900">{serviceNames.join(', ') || 'Service request'} · {cancelled.bookingCode}</div>
+                    <div className="mt-1 text-stone-600">The customer cancelled this request.</div>
+                    <div className="mt-1 text-rose-800"><b>Reason:</b> {cancelled.cancellation?.reason || 'No reason provided'}</div>
+                    <div className="mt-1 text-[10px] text-stone-500">Cancelled: {cancelled.cancellation?.cancelledAt ? new Date(cancelled.cancellation.cancelledAt).toLocaleString() : 'Time unavailable'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {!booking && (
             <div className="p-6 rounded-3xl bg-white border border-stone-200 text-center">
               <div className="font-bold text-stone-900">No assigned work</div>
@@ -257,15 +325,17 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
                   {booking.priceNegotiationStatus === 'pending_helper' && (
                     <div className="mt-2 space-y-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={counterPrice}
-                        onChange={(event) => setCounterPrice(event.target.value)}
-                        placeholder="Counter price ₹"
-                        className="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-xs"
-                      />
-                      <div className="grid grid-cols-3 gap-2">
+                      {booking.helperId === helper.id && (
+                        <input
+                          type="number"
+                          min="1"
+                          value={counterPrice}
+                          onChange={(event) => setCounterPrice(event.target.value)}
+                          placeholder="Counter price ₹"
+                          className="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-xs"
+                        />
+                      )}
+                      <div className={`grid ${booking.helperId === helper.id ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                         <button
                           type="button"
                           onClick={() => respondToOffer('accept')}
@@ -273,13 +343,15 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
                         >
                           Accept
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => respondToOffer('counter')}
-                          className="p-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
-                        >
-                          Counter
-                        </button>
+                        {booking.helperId === helper.id && (
+                          <button
+                            type="button"
+                            onClick={() => respondToOffer('counter')}
+                            className="p-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
+                          >
+                            Counter
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => respondToOffer('decline')}
@@ -306,21 +378,23 @@ export const HelperPortal: React.FC<HelperPortalProps> = ({
 
                 <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
                   <div className="text-xs font-bold text-stone-800">Work scope</div>
-                  {booking.workScope ? (
-                    <div className="text-[11px] text-stone-600 mt-1 space-y-0.5">
-                      {'bedrooms' in booking.workScope && <div>Bedrooms: {booking.workScope.bedrooms}</div>}
-                      {'halls' in booking.workScope && <div>Halls / living rooms: {booking.workScope.halls}</div>}
-                      {'kitchens' in booking.workScope && <div>Kitchens: {booking.workScope.kitchens}</div>}
-                      {'bathrooms' in booking.workScope && <div>Bathrooms: {booking.workScope.bathrooms}</div>}
-                      {'cleaningType' in booking.workScope && <div>Cleaning: {booking.workScope.cleaningType}</div>}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-stone-500 mt-1">
-                      {booking.tasks
-                        .map((id) => MASTER_TASKS.find((task) => task.id === id)?.name || id)
-                        .join(', ')}
-                    </div>
-                  )}
+                  <div className="text-[11px] text-stone-600 mt-1 space-y-0.5">
+                    {booking.tasks.map((id) => {
+                      const task = MASTER_TASKS.find((item) => item.id === id);
+                      if (!task) return <div key={id}>{id.replace(/_/g, ' ')}</div>;
+                      if (task.category === 'cleaning') {
+                        const scope = booking.workScopeBreakdown?.homeCleaning?.broomingMopping;
+                        if (scope) return <div key={id}>Brooming &amp; Mopping: {scope.bedrooms} bedrooms · {scope.kitchens} kitchens · {scope.halls} halls{scope.otherFloorAreas ? ` · ${scope.otherFloorAreas} other areas` : ''}</div>;
+                        if (booking.workScope && ('bedrooms' in booking.workScope || 'kitchens' in booking.workScope || 'halls' in booking.workScope)) return <div key={id}>Brooming &amp; Mopping: {booking.workScope.bedrooms ?? 0} bedrooms · {booking.workScope.kitchens ?? 0} kitchens · {booking.workScope.halls ?? 0} halls</div>;
+                        return <div key={id}>{task.name}</div>;
+                      }
+                      if (task.category === 'bathroom_cleaning') {
+                        const count = booking.workScopeBreakdown?.bathroomCleaning?.config?.bathroomCount ?? booking.workScope?.bathrooms;
+                        return <div key={id}>Bathroom Cleaning{count != null ? `: ${count} bathroom(s)` : ''}{booking.workScopeBreakdown?.bathroomCleaning?.config?.cleaningType ? ` · ${booking.workScopeBreakdown.bathroomCleaning.config.cleaningType} cleaning` : ''}</div>;
+                      }
+                      return <div key={id}>{task.name}{task.description ? `: ${task.description}` : ''}</div>;
+                    })}
+                  </div>
                 </div>
 
                 {booking.status !== 'completed' && booking.status !== 'cancelled' && (

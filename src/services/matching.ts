@@ -62,7 +62,22 @@ export function matchHelpers(
     let isEligible = true;
     let ineligibilityReason = '';
 
-    // Check 1: Active & Verification status
+    // Check 1: Availability and account verification.
+    // Off-duty helpers must never receive new booking invitations, urgent or otherwise.
+    if (helper.availabilityStatus === 'off_duty') {
+      return {
+        helper,
+        score: 0,
+        isEligible: false,
+        ineligibilityReason: 'Helper is Off Duty and unavailable for new bookings',
+        distanceKm: 99,
+        factors: [{ label: 'Off Duty', matched: false, type: 'critical' }],
+        isFavourite: false,
+        hasServedApartment: false,
+        skillsCoveragePercent: 0,
+      };
+    }
+
     if (!helper.isActive || helper.verificationStatus !== 'verified') {
       return {
         helper,
