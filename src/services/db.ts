@@ -838,7 +838,10 @@ export const db = {
         isUrgent: booking.isUrgent,
         customer: db.getCustomer(booking.customerId),
       }
-    ).filter((m) => m.isEligible);
+    ).filter((m) =>
+      m.isEligible &&
+      ['available_now', 'available_today'].includes(m.helper.availabilityStatus)
+    );
 
     const alternativeHelperIds = [...new Set(matches.map((m) => m.helper.id))];
     booking.helperId = undefined;
