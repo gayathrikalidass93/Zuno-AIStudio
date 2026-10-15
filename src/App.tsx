@@ -152,7 +152,7 @@ export default function App() {
   };
 
   // Route each role to its own entry point: / for customers, /helper, and /admin.
-  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const routeRole: AuthRole = currentPath === '/helper' ? 'helper' : currentPath === '/admin' ? 'admin' : 'customer';
 
   // Never show a signed-in dashboard on a different role's portal URL.
