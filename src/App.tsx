@@ -152,7 +152,7 @@ export default function App() {
   };
 
   // Keep each role on its own entry point: / for customers, /helper, /admin.
-  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const routeRole: AuthRole = currentPath === '/helper' ? 'helper' : currentPath === '/admin' ? 'admin' : 'customer';
 
   // A session from another portal must sign in to the role for this URL.
