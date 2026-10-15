@@ -33,7 +33,7 @@ export const NeedHelpModal: React.FC<Props> = ({ isOpen, onClose, customer, help
   const [flat, setFlat] = useState(customer.flat || '');
   const getLocalDateString = (date: Date) => { const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };
   const getMinWorkDate = () => { const now = new Date(); const min = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now.getHours() >= 21) min.setDate(min.getDate() + 1); return getLocalDateString(min); };
-  const makeTimeSlots = (date: string) => { const now = new Date(); const today = getLocalDateString(now); return Array.from({ length: 16 }, (_, index) => index + 6).filter((hour) => date !== today || (hour !== 6 && hour > now.getHours())).map((hour) => ({ value: `${String(hour).padStart(2, '0')}:00`, label: `${hour % 12 || 12}:00 ${hour < 12 ? 'AM' : 'PM'}` })); };
+  const makeTimeSlots = (date: string) => { const now = new Date(); const today = getLocalDateString(now); const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); const tomorrow = getLocalDateString(tomorrowDate); return Array.from({ length: 16 }, (_, index) => index + 6).filter((hour) => { if (date === today) return hour !== 6 && hour > now.getHours(); if (date === tomorrow && now.getHours() >= 21) return hour !== 6; return true; }).map((hour) => ({ value: `${String(hour).padStart(2, '0')}:00`, label: `${hour % 12 || 12}:00 ${hour < 12 ? 'AM' : 'PM'}` })); };
   const [workDate, setWorkDate] = useState(getMinWorkDate());
   const [workTime, setWorkTime] = useState('06:00');
   const availableTimeSlots = makeTimeSlots(workDate);
