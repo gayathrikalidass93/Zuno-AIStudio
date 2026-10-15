@@ -26,7 +26,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   // Each portal is selected by its URL, not by an in-page role switcher.
-  const entryPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const roleTab: AuthRole = entryPath === '/helper' ? 'helper' : entryPath === '/admin' ? 'admin' : 'customer';
   const [customerMode, setCustomerMode] = useState<'login' | 'register'>('login');
 
